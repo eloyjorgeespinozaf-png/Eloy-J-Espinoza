@@ -1709,7 +1709,7 @@
             <button type="submit" class="btn-submit" id="submitBtn" style="flex: 1;">
               <span>Registrar y Asignar</span>
             </button>
-            <button type="button" class="btn-secondary" id="btnCancelEdit" style="display: none;">Cancelar</button>
+            <button type="button" class="btn-secondary admin-only" id="btnCancelEdit" style="display: none;">Cancelar</button>
           </div>
         </form>
 
@@ -1742,7 +1742,7 @@
           <button type="button" class="btn-customizer-trigger admin-only" id="btnOpenThemeModalDeployment" style="padding: 0.35rem 0.75rem; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 0.35rem;" title="Personalizar Escudo y Fondo (Solo Administrador)">
             <span>🎨 Escudo y Fondos</span>
           </button>
-          <button type="button" class="btn-print" id="btnPrintDeploymentPdf" style="padding: 0.35rem 0.75rem; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 0.35rem;">
+          <button type="button" class="btn-print admin-only" id="btnPrintDeploymentPdf" style="padding: 0.35rem 0.75rem; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 0.35rem;" title="Generar e Imprimir Reporte PDF Oficial (Solo Administrador)">
             <span>🖨️ Imprimir en PDF</span>
           </button>
           <button type="button" class="btn-secondary" id="btnBackToRegister" style="padding: 0.3rem 0.65rem; font-size: 0.75rem;">
@@ -1764,7 +1764,7 @@
             <span style="font-size: 0.75rem; color: #fde68a;" id="recentTimeText">--:--:--</span>
           </div>
           <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-            <button type="button" class="btn-print" id="btnBannerPrintPdf" style="font-size: 0.75rem; padding: 0.4rem 0.75rem;">
+            <button type="button" class="btn-print admin-only" id="btnBannerPrintPdf" style="font-size: 0.75rem; padding: 0.4rem 0.75rem;" title="Imprimir Reporte PDF (Solo Administrador)">
               <span>🖨️ Imprimir en PDF</span>
             </button>
             <button type="button" class="btn-edit admin-only" id="btnBannerEdit" style="font-size: 0.75rem; padding: 0.4rem 0.75rem;">
@@ -3167,6 +3167,10 @@
      * Ejecutar el borrado definitivo del oficial y restaurar cupo en tiempo real
      */
     function executeDeleteOfficer() {
+      if (state.currentRole !== 'ADMINISTRADOR') {
+        showAlert("Acción denegada: Borrado reservado exclusivamente para el Administrador.");
+        return;
+      }
       const target = officerToDelete || state.adminOfficer;
       if (!target) return;
 

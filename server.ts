@@ -98,7 +98,15 @@ function loadServerState() {
           });
         }
         if (Array.isArray(saved.registeredOfficers)) {
-          state.registeredOfficers = saved.registeredOfficers;
+          const uniqueOfficers: Officer[] = [];
+          const seen = new Set<string>();
+          saved.registeredOfficers.forEach((ofc: Officer) => {
+            if (ofc && ofc.id && !seen.has(ofc.id)) {
+              seen.add(ofc.id);
+              uniqueOfficers.push(ofc);
+            }
+          });
+          state.registeredOfficers = uniqueOfficers;
           COMMISSIONS_DATA.forEach(c => {
             state.assignedOfficers[c.id] = [];
           });
@@ -251,11 +259,21 @@ function registerOfficerHandler(payload: {
     timestamp: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
   };
 
-  if (!state.assignedOfficers[commissionId]) {
-    state.assignedOfficers[commissionId] = [];
+  const existingIdx = state.registeredOfficers.findIndex(o => o.id === newOfficer.id);
+  if (existingIdx >= 0) {
+    state.registeredOfficers[existingIdx] = newOfficer;
+    if (state.assignedOfficers[commissionId]) {
+      const aIdx = state.assignedOfficers[commissionId].findIndex(o => o.id === newOfficer.id);
+      if (aIdx >= 0) state.assignedOfficers[commissionId][aIdx] = newOfficer;
+      else state.assignedOfficers[commissionId].push(newOfficer);
+    }
+  } else {
+    if (!state.assignedOfficers[commissionId]) {
+      state.assignedOfficers[commissionId] = [];
+    }
+    state.assignedOfficers[commissionId].push(newOfficer);
+    state.registeredOfficers.push(newOfficer);
   }
-  state.assignedOfficers[commissionId].push(newOfficer);
-  state.registeredOfficers.push(newOfficer);
 
   if (!state.adminOfficer || newOfficer.role === 'ADMINISTRADOR') {
     state.adminOfficer = newOfficer;
