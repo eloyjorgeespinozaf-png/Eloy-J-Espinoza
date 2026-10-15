@@ -2,6 +2,7 @@ import express from 'express';
 import http from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -30,162 +31,455 @@ const COMMISSIONS_DATA = [
   { id: "com_econ", name: "Comisión económica", maxQuota: 2 }
 ];
 
-export interface AdminOfficer {
+export interface Officer {
   id: string;
   rank: string;
   fullName: string;
   commissionId: string;
   commissionName: string;
-  role: 'ADMINISTRADOR';
+  role: 'ADMINISTRADOR' | 'OFICIAL';
   timestamp: string;
+  deviceType?: 'Móvil' | 'PC' | string;
 }
 
-// Estado autoritativo centralizado: SOLO 1 USUARIO ADMINISTRADOR PERMITIDO
+// Estado autoritativo centralizado en tiempo real (Soporta múltiples registros de usuarios)
 const state = {
-  adminOfficer: null as AdminOfficer | null,
+  adminOfficer: null as Officer | null,
+  registeredOfficers: [] as Officer[],
   quotas: {} as Record<string, number>,
-  assignedOfficers: {} as Record<string, AdminOfficer[]>
+  assignedOfficers: {} as Record<string, Officer[]>
 };
 
-// Inicializar cupos
+// Inicializar cupos y colecciones
 COMMISSIONS_DATA.forEach(c => {
   state.quotas[c.id] = c.maxQuota;
   state.assignedOfficers[c.id] = [];
 });
 
+// Persistencia en disco para garantizar retención ante reinicios de servidor
+const DATA_DIR = path.join(__dirname, 'data');
+const STATE_FILE = path.join(DATA_DIR, 'militar_state.json');
+
+function saveServerState() {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    const toSave = {
+      adminOfficer: state.adminOfficer,
+      registeredOfficers: state.registeredOfficers,
+      quotas: state.quotas,
+      assignedOfficers: state.assignedOfficers,
+      lastUpdated: new Date().toISOString()
+    };
+    fs.writeFileSync(STATE_FILE, JSON.stringify(toSave, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Error guardando estado en disco:', err);
+  }
+}
+
+function loadServerState() {
+  try {
+    if (fs.existsSync(STATE_FILE)) {
+      const raw = fs.readFileSync(STATE_FILE, 'utf-8');
+      const saved = JSON.parse(raw);
+      if (saved && typeof saved === 'object') {
+        if (saved.quotas) {
+          Object.keys(saved.quotas).forEach(id => {
+            state.quotas[id] = saved.quotas[id];
+          });
+        }
+        if (Array.isArray(saved.registeredOfficers)) {
+          state.registeredOfficers = saved.registeredOfficers;
+          COMMISSIONS_DATA.forEach(c => {
+            state.assignedOfficers[c.id] = [];
+          });
+          state.registeredOfficers.forEach((ofc: Officer) => {
+            if (ofc && ofc.commissionId) {
+              if (!state.assignedOfficers[ofc.commissionId]) {
+                state.assignedOfficers[ofc.commissionId] = [];
+              }
+              state.assignedOfficers[ofc.commissionId].push(ofc);
+            }
+          });
+        } else if (saved.assignedOfficers) {
+          state.assignedOfficers = saved.assignedOfficers;
+          state.registeredOfficers = [];
+          Object.values(state.assignedOfficers).forEach(list => {
+            if (Array.isArray(list)) state.registeredOfficers.push(...list);
+          });
+        }
+        if (saved.adminOfficer) {
+          state.adminOfficer = saved.adminOfficer;
+        } else if (state.registeredOfficers.length > 0) {
+          state.adminOfficer = state.registeredOfficers[0];
+        }
+        console.log(`Estado restaurado con éxito: ${state.registeredOfficers.length} oficiales registrados.`);
+      }
+    }
+  } catch (err) {
+    console.error('Error cargando estado desde disco:', err);
+  }
+}
+
+loadServerState();
+
+// Control de clientes WebSocket y detección de dispositivos (Móvil vs PC)
+interface ClientInfo {
+  ws: WebSocket;
+  id: string;
+  deviceType: 'Móvil' | 'PC';
+  isAlive: boolean;
+  connectedAt: number;
+}
+
+const clientsMap = new Map<WebSocket, ClientInfo>();
+
 function broadcast(event: string, payload: any) {
   const message = JSON.stringify({ event, payload, timestamp: Date.now() });
   wss.clients.forEach(client => {
     if (client.readyState === WebSocket.OPEN) {
-      client.send(message);
+      try {
+        client.send(message);
+      } catch (e) {
+        console.warn('Error enviando mensaje a cliente:', e);
+      }
     }
   });
 }
 
-function broadcastPresence() {
-  broadcast('presence:update', {
-    onlineCount: wss.clients.size
+function getPresenceStats() {
+  let mobileCount = 0;
+  let pcCount = 0;
+
+  clientsMap.forEach(info => {
+    if (info.deviceType === 'Móvil') {
+      mobileCount++;
+    } else {
+      pcCount++;
+    }
   });
+
+  const total = wss.clients.size;
+  if (mobileCount === 0 && pcCount === 0 && total > 0) {
+    pcCount = total;
+  }
+
+  return {
+    onlineCount: Math.max(1, total),
+    mobileCount,
+    pcCount
+  };
 }
 
-function registerAdminHandler(payload: { id?: string; rank: string; fullName: string; commissionId: string }) {
-  if (state.adminOfficer !== null) {
-    return { success: false, message: 'BLOQUEO: Solamente un usuario puede registrarse como Administrador.' };
+function broadcastPresence() {
+  const stats = getPresenceStats();
+  broadcast('presence:update', stats);
+}
+
+// Registro de Oficiales en Tiempo Real (soporta múltiples usuarios en Móvil o PC)
+function registerOfficerHandler(payload: {
+  id?: string;
+  rank: string;
+  fullName: string;
+  commissionId: string;
+  role?: 'ADMINISTRADOR' | 'OFICIAL';
+  deviceType?: 'Móvil' | 'PC' | string;
+}) {
+  const { id, rank, fullName, commissionId, role, deviceType } = payload;
+
+  if (!rank || !fullName || !commissionId) {
+    return { success: false, message: 'Faltan campos obligatorios para el registro.' };
   }
-  const { id, rank, fullName, commissionId } = payload;
-  if (!state.quotas[commissionId] || state.quotas[commissionId] <= 0) {
+
+  if (state.quotas[commissionId] === undefined || state.quotas[commissionId] <= 0) {
     return { success: false, message: 'La comisión seleccionada no tiene cupos disponibles.' };
   }
 
   const com = COMMISSIONS_DATA.find(c => c.id === commissionId);
-  const newAdmin: AdminOfficer = {
-    id: id || 'admin_' + Date.now(),
-    rank,
-    fullName: (fullName || '').toUpperCase(),
+  const commissionName = com ? com.name : commissionId;
+
+  // Descontar cupo
+  state.quotas[commissionId] -= 1;
+
+  const officerRole = role || (state.registeredOfficers.length === 0 ? 'ADMINISTRADOR' : 'OFICIAL');
+  const newOfficer: Officer = {
+    id: id || 'ofc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+    rank: rank.trim(),
+    fullName: (fullName || '').trim().toUpperCase(),
     commissionId,
-    commissionName: com ? com.name : commissionId,
-    role: 'ADMINISTRADOR',
-    timestamp: new Date().toLocaleTimeString()
+    commissionName,
+    role: officerRole,
+    deviceType: deviceType || 'Dispositivo',
+    timestamp: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
   };
 
-  state.adminOfficer = newAdmin;
-  state.quotas[commissionId] -= 1;
-  state.assignedOfficers[commissionId] = [newAdmin];
+  if (!state.assignedOfficers[commissionId]) {
+    state.assignedOfficers[commissionId] = [];
+  }
+  state.assignedOfficers[commissionId].push(newOfficer);
+  state.registeredOfficers.push(newOfficer);
 
-  broadcast('admin:registered', {
-    adminOfficer: newAdmin,
-    quotas: state.quotas,
-    assignedOfficers: state.assignedOfficers
-  });
-
-  return { success: true, adminOfficer: newAdmin, quotas: state.quotas, assignedOfficers: state.assignedOfficers };
-}
-
-function updateAdminHandler(payload: { rank: string; fullName: string; commissionId: string; oldCommissionId?: string }) {
-  if (!state.adminOfficer) {
-    return { success: false, message: 'No existe un administrador registrado para modificar.' };
+  if (!state.adminOfficer || newOfficer.role === 'ADMINISTRADOR') {
+    state.adminOfficer = newOfficer;
   }
 
-  const { rank, fullName, commissionId, oldCommissionId } = payload;
+  saveServerState();
 
-  if (oldCommissionId && oldCommissionId !== commissionId) {
+  const responsePayload = {
+    officer: newOfficer,
+    adminOfficer: state.adminOfficer,
+    quotas: state.quotas,
+    assignedOfficers: state.assignedOfficers,
+    registeredOfficers: state.registeredOfficers
+  };
+
+  // Emitir evento principal de registro y compatibilidad admin
+  broadcast('officer:registered', responsePayload);
+  broadcast('admin:registered', responsePayload);
+  broadcast('sync:state', {
+    ...responsePayload,
+    ...getPresenceStats()
+  });
+
+  return { success: true, ...responsePayload };
+}
+
+export interface HandlerResult {
+  success: boolean;
+  message?: string;
+  officer?: Officer;
+  adminOfficer?: Officer | null;
+  quotas?: Record<string, number>;
+  assignedOfficers?: Record<string, Officer[]>;
+  registeredOfficers?: Officer[];
+  deletedId?: string;
+  commissionId?: string;
+  newQuota?: number;
+}
+
+function updateOfficerHandler(payload: {
+  id?: string;
+  rank: string;
+  fullName: string;
+  commissionId: string;
+  oldCommissionId?: string;
+  deviceType?: string;
+}): HandlerResult {
+  const { id, rank, fullName, commissionId, oldCommissionId } = payload;
+
+  const targetId = id || (state.adminOfficer ? state.adminOfficer.id : '');
+  const officerIdx = state.registeredOfficers.findIndex(o => o.id === targetId);
+  if (officerIdx === -1) {
+    return { success: false, message: 'No se encontró el oficial a modificar.' };
+  }
+
+  const currentOfficer = state.registeredOfficers[officerIdx];
+  const prevComId = oldCommissionId || currentOfficer.commissionId;
+
+  // Si cambió de comisión, comprobar cupo y reajustar
+  if (prevComId !== commissionId) {
     if (!state.quotas[commissionId] || state.quotas[commissionId] <= 0) {
-      return { success: false, message: 'Sin cupos en la nueva comisión seleccionada.' };
+      return { success: false, message: 'La nueva comisión seleccionada no tiene cupos disponibles.' };
     }
-    state.quotas[oldCommissionId] = (state.quotas[oldCommissionId] || 0) + 1;
+    state.quotas[prevComId] = (state.quotas[prevComId] || 0) + 1;
     state.quotas[commissionId] -= 1;
-    state.assignedOfficers[oldCommissionId] = [];
+
+    if (state.assignedOfficers[prevComId]) {
+      state.assignedOfficers[prevComId] = state.assignedOfficers[prevComId].filter(o => o.id !== targetId);
+    }
   }
 
   const com = COMMISSIONS_DATA.find(c => c.id === commissionId);
-  const updatedAdmin: AdminOfficer = {
-    ...state.adminOfficer,
-    rank,
-    fullName: (fullName || '').toUpperCase(),
+  const updatedOfficer: Officer = {
+    ...currentOfficer,
+    rank: rank.trim(),
+    fullName: fullName.trim().toUpperCase(),
     commissionId,
     commissionName: com ? com.name : commissionId,
-    timestamp: new Date().toLocaleTimeString()
+    timestamp: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
   };
 
-  state.adminOfficer = updatedAdmin;
-  state.assignedOfficers[commissionId] = [updatedAdmin];
+  state.registeredOfficers[officerIdx] = updatedOfficer;
 
-  broadcast('admin:updated', {
-    adminOfficer: updatedAdmin,
-    quotas: state.quotas,
-    assignedOfficers: state.assignedOfficers
-  });
-
-  return { success: true, adminOfficer: updatedAdmin, quotas: state.quotas, assignedOfficers: state.assignedOfficers };
-}
-
-function deleteAdminHandler() {
-  if (!state.adminOfficer) {
-    return { success: false, message: 'No existe un administrador registrado para borrar.' };
+  if (!state.assignedOfficers[commissionId]) {
+    state.assignedOfficers[commissionId] = [];
+  }
+  const assignedIdx = state.assignedOfficers[commissionId].findIndex(o => o.id === targetId);
+  if (assignedIdx >= 0) {
+    state.assignedOfficers[commissionId][assignedIdx] = updatedOfficer;
+  } else {
+    state.assignedOfficers[commissionId].push(updatedOfficer);
   }
 
-  const comId = state.adminOfficer.commissionId;
+  if (state.adminOfficer && state.adminOfficer.id === targetId) {
+    state.adminOfficer = updatedOfficer;
+  }
+
+  saveServerState();
+
+  const responsePayload = {
+    officer: updatedOfficer,
+    adminOfficer: state.adminOfficer,
+    quotas: state.quotas,
+    assignedOfficers: state.assignedOfficers,
+    registeredOfficers: state.registeredOfficers
+  };
+
+  broadcast('officer:updated', responsePayload);
+  broadcast('admin:updated', responsePayload);
+  broadcast('sync:state', {
+    ...responsePayload,
+    ...getPresenceStats()
+  });
+
+  return { success: true, ...responsePayload };
+}
+
+function updateAdminFallback(payload: any): HandlerResult {
+  if (!state.adminOfficer) return { success: false, message: 'No existe registro para modificar.' };
+  return updateOfficerHandler({ ...payload, id: state.adminOfficer.id });
+}
+
+function deleteOfficerHandler(payload: { id?: string; commissionId?: string }) {
+  const { id } = payload;
+  let targetId = id;
+
+  if (!targetId && state.adminOfficer) {
+    targetId = state.adminOfficer.id;
+  }
+
+  if (!targetId) {
+    return { success: false, message: 'No se especificó oficial para eliminar.' };
+  }
+
+  const officer = state.registeredOfficers.find(o => o.id === targetId);
+  if (!officer) {
+    return { success: false, message: 'Oficial no encontrado.' };
+  }
+
+  const comId = officer.commissionId;
   if (state.quotas[comId] !== undefined) {
     state.quotas[comId] += 1;
   }
 
-  state.adminOfficer = null;
-  state.assignedOfficers[comId] = [];
+  state.registeredOfficers = state.registeredOfficers.filter(o => o.id !== targetId);
+  if (state.assignedOfficers[comId]) {
+    state.assignedOfficers[comId] = state.assignedOfficers[comId].filter(o => o.id !== targetId);
+  }
 
-  broadcast('admin:deleted', {
-    adminOfficer: null,
+  if (state.adminOfficer && state.adminOfficer.id === targetId) {
+    state.adminOfficer = state.registeredOfficers.length > 0 ? state.registeredOfficers[0] : null;
+  }
+
+  saveServerState();
+
+  const responsePayload = {
+    deletedId: targetId,
+    adminOfficer: state.adminOfficer,
     quotas: state.quotas,
-    assignedOfficers: state.assignedOfficers
+    assignedOfficers: state.assignedOfficers,
+    registeredOfficers: state.registeredOfficers
+  };
+
+  broadcast('officer:deleted', responsePayload);
+  broadcast('admin:deleted', responsePayload);
+  broadcast('sync:state', {
+    ...responsePayload,
+    ...getPresenceStats()
   });
 
-  return { success: true, quotas: state.quotas, assignedOfficers: state.assignedOfficers };
+  return { success: true, ...responsePayload };
 }
 
 function updateWindowQuotaHandler(payload: { commissionId: string; newQuota: number }) {
   const { commissionId, newQuota } = payload;
   if (commissionId && typeof newQuota === 'number' && newQuota >= 0) {
     state.quotas[commissionId] = newQuota;
-    broadcast('window:quota_updated', {
+    saveServerState();
+
+    const responsePayload = {
       commissionId,
+      newQuota,
       quotas: state.quotas,
-      assignedOfficers: state.assignedOfficers
+      assignedOfficers: state.assignedOfficers,
+      registeredOfficers: state.registeredOfficers
+    };
+
+    broadcast('window:quota_updated', responsePayload);
+    broadcast('sync:state', {
+      ...responsePayload,
+      adminOfficer: state.adminOfficer,
+      ...getPresenceStats()
     });
-    return { success: true, commissionId, quotas: state.quotas, assignedOfficers: state.assignedOfficers };
+
+    return { success: true, ...responsePayload };
   }
   return { success: false, message: 'Cupo o comisión inválidos.' };
 }
 
-wss.on('connection', (ws) => {
+// Heartbeat para verificar conexiones vivas y limpiar desconexiones en móviles
+const heartbeatInterval = setInterval(() => {
+  wss.clients.forEach(ws => {
+    const client = clientsMap.get(ws);
+    if (!client) return;
+    if (!client.isAlive) {
+      clientsMap.delete(ws);
+      ws.terminate();
+      broadcastPresence();
+      return;
+    }
+    client.isAlive = false;
+    try {
+      ws.ping();
+    } catch (e) {
+      clientsMap.delete(ws);
+      ws.terminate();
+      broadcastPresence();
+    }
+  });
+}, 15000);
+
+wss.on('close', () => {
+  clearInterval(heartbeatInterval);
+});
+
+wss.on('connection', (ws, req) => {
+  // Detección inicial por User-Agent si está disponible
+  const userAgent = req.headers['user-agent'] || '';
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+  const clientId = 'client_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+
+  const clientInfo: ClientInfo = {
+    ws,
+    id: clientId,
+    deviceType: isMobile ? 'Móvil' : 'PC',
+    isAlive: true,
+    connectedAt: Date.now()
+  };
+
+  clientsMap.set(ws, clientInfo);
+
+  ws.on('pong', () => {
+    const client = clientsMap.get(ws);
+    if (client) client.isAlive = true;
+  });
+
+  // Notificar a todos la nueva presencia
   broadcastPresence();
 
-  // Enviar estado íntegro y datos del administrador al cliente conectado
+  // Enviar estado íntegro y datos de sincronización al cliente recién conectado
+  const presence = getPresenceStats();
   ws.send(JSON.stringify({
     event: 'sync:state',
     payload: {
       adminOfficer: state.adminOfficer,
+      registeredOfficers: state.registeredOfficers,
       quotas: state.quotas,
       assignedOfficers: state.assignedOfficers,
-      onlineCount: wss.clients.size
+      onlineCount: presence.onlineCount,
+      mobileCount: presence.mobileCount,
+      pcCount: presence.pcCount
     }
   }));
 
@@ -193,20 +487,27 @@ wss.on('connection', (ws) => {
     try {
       const msg = JSON.parse(raw.toString());
 
-      if (msg.type === 'register_admin') {
-        const result = registerAdminHandler(msg.payload);
+      // Mensaje de saludo/handshake con tipo de dispositivo reportado por el cliente
+      if (msg.type === 'hello') {
+        const client = clientsMap.get(ws);
+        if (client && msg.deviceType) {
+          client.deviceType = msg.deviceType === 'Móvil' ? 'Móvil' : 'PC';
+          broadcastPresence();
+        }
+      } else if (msg.type === 'register_officer' || msg.type === 'register_admin') {
+        const result = registerOfficerHandler(msg.payload || {});
         if (!result.success) {
           ws.send(JSON.stringify({ event: 'error', message: result.message }));
         }
-      } else if (msg.type === 'update_admin') {
-        const result = updateAdminHandler(msg.payload);
+      } else if (msg.type === 'update_officer' || msg.type === 'update_admin') {
+        const result = updateOfficerHandler(msg.payload || {});
         if (!result.success) {
           ws.send(JSON.stringify({ event: 'error', message: result.message }));
         }
-      } else if (msg.type === 'delete_admin') {
-        deleteAdminHandler();
+      } else if (msg.type === 'delete_officer' || msg.type === 'delete_admin') {
+        deleteOfficerHandler(msg.payload || {});
       } else if (msg.type === 'update_window_quota') {
-        updateWindowQuotaHandler(msg.payload);
+        updateWindowQuotaHandler(msg.payload || {});
       }
     } catch (err) {
       console.error('Error en procesamiento WebSocket:', err);
@@ -214,23 +515,33 @@ wss.on('connection', (ws) => {
   });
 
   ws.on('close', () => {
+    clientsMap.delete(ws);
+    broadcastPresence();
+  });
+
+  ws.on('error', () => {
+    clientsMap.delete(ws);
     broadcastPresence();
   });
 });
 
 // Endpoint HTTP REST para consulta del estado autoritativo
 app.get('/api/state', (req, res) => {
+  const presence = getPresenceStats();
   res.json({
     adminOfficer: state.adminOfficer,
+    registeredOfficers: state.registeredOfficers,
     quotas: state.quotas,
     assignedOfficers: state.assignedOfficers,
-    onlineCount: wss.clients.size
+    onlineCount: presence.onlineCount,
+    mobileCount: presence.mobileCount,
+    pcCount: presence.pcCount
   });
 });
 
 // Endpoints REST de contingencia y sincronización garantizada
 app.post('/api/register', (req, res) => {
-  const result = registerAdminHandler(req.body);
+  const result = registerOfficerHandler(req.body);
   if (!result.success) {
     res.status(400).json(result);
   } else {
@@ -239,7 +550,7 @@ app.post('/api/register', (req, res) => {
 });
 
 app.post('/api/update', (req, res) => {
-  const result = updateAdminHandler(req.body);
+  const result = updateOfficerHandler(req.body);
   if (!result.success) {
     res.status(400).json(result);
   } else {
@@ -248,7 +559,7 @@ app.post('/api/update', (req, res) => {
 });
 
 app.post('/api/delete', (req, res) => {
-  const result = deleteAdminHandler();
+  const result = deleteOfficerHandler(req.body);
   if (!result.success) {
     res.status(400).json(result);
   } else {
@@ -277,11 +588,11 @@ async function startServer() {
     app.use(vite.middlewares);
 
     // Servir index.html transformado por Vite en modo desarrollo
-    const fs = await import('fs');
+    const fsModule = await import('fs');
     app.use('*', async (req, res, next) => {
       const url = req.originalUrl;
       try {
-        let template = fs.readFileSync(path.resolve(__dirname, 'index.html'), 'utf-8');
+        let template = fsModule.readFileSync(path.resolve(__dirname, 'index.html'), 'utf-8');
         template = await vite.transformIndexHtml(url, template);
         res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
       } catch (e) {
@@ -297,7 +608,7 @@ async function startServer() {
   }
 
   server.listen(PORT, '0.0.0.0', () => {
-    console.log(`Servidor Administrativo Militar en tiempo real activo en puerto ${PORT}`);
+    console.log(`Servidor Militar Sincronizado en tiempo real activo en puerto ${PORT}`);
   });
 }
 

@@ -111,6 +111,55 @@
       align-items: center;
       gap: 0.45rem;
       white-space: nowrap;
+      transition: all 0.25s ease;
+      box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+    }
+
+    .presence-devices {
+      font-size: 0.68rem;
+      color: #a7f3d0;
+      font-weight: 600;
+      background: rgba(16, 185, 129, 0.25);
+      padding: 0.1rem 0.4rem;
+      border-radius: 4px;
+      margin-left: 0.2rem;
+      border: 1px solid rgba(16, 185, 129, 0.35);
+    }
+
+    .device-pill {
+      font-size: 0.65rem;
+      background: rgba(59, 130, 246, 0.15);
+      border: 1px solid rgba(59, 130, 246, 0.35);
+      color: #93c5fd;
+      padding: 0.1rem 0.35rem;
+      border-radius: 3px;
+      white-space: nowrap;
+      font-weight: 600;
+    }
+
+    .sync-toast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      background: linear-gradient(135deg, #0e1724 0%, #162438 100%);
+      border: 1px solid #10b981;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6), 0 0 15px rgba(16, 185, 129, 0.25);
+      color: #ecfdf5;
+      padding: 0.75rem 1.1rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      z-index: 9999;
+      animation: slideInUp 0.3s ease;
+      max-width: 92vw;
+      line-height: 1.4;
+    }
+
+    @keyframes slideInUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
     }
 
     .presence-pulse {
@@ -2203,7 +2252,11 @@
       };
     }
 
-    // Conexión WebSocket en tiempo real
+    // Detección táctica del tipo de dispositivo del usuario (Móvil vs PC)
+    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (window.innerWidth <= 768 && ('ontouchstart' in window || navigator.maxTouchPoints > 0));
+    const clientDeviceType = isMobileDevice ? 'Móvil' : 'PC';
+
+    // Conexión WebSocket en tiempo real con soporte multi-dispositivo
     let socket = null;
     let reconnectTimer = null;
 
@@ -2212,11 +2265,19 @@
       const wsUrl = `${protocol}//${window.location.host}/ws`;
 
       try {
+        if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+          return;
+        }
+
         socket = new WebSocket(wsUrl);
 
         socket.onopen = function () {
-          console.log("WebSocket Militar Conectado");
+          console.log(`WebSocket Militar Conectado (${clientDeviceType})`);
           if (reconnectTimer) clearTimeout(reconnectTimer);
+          // Enviar saludo con tipo de dispositivo
+          try {
+            socket.send(JSON.stringify({ type: 'hello', deviceType: clientDeviceType }));
+          } catch (e) {}
         };
 
         socket.onmessage = function (event) {
@@ -2229,7 +2290,7 @@
         };
 
         socket.onclose = function () {
-          reconnectTimer = setTimeout(initWebSocket, 3000);
+          reconnectTimer = setTimeout(initWebSocket, 2500);
         };
 
         socket.onerror = function () {
@@ -2240,19 +2301,93 @@
       }
     }
 
+    // Reconexión y refresco instantáneo al encender pantalla móvil o cambiar de pestaña
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "visible") {
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+          initWebSocket();
+        }
+        fetch('/api/state')
+          .then(res => res.json())
+          .then(data => {
+            if (data) handleRealTimeEvent('sync:state', data);
+          })
+          .catch(() => {});
+      }
+    });
+
     /**
-     * Procesa los eventos emitidos por el servidor o pestañas
+     * Muestra notificación flotante de sincronización en tiempo real
+     */
+    function showRealtimeNotification(msg) {
+      const existing = document.getElementById("syncToastNotice");
+      if (existing) existing.remove();
+
+      const toast = document.createElement("div");
+      toast.id = "syncToastNotice";
+      toast.className = "sync-toast";
+      toast.innerHTML = `<span>⚡</span><span>${msg}</span>`;
+      document.body.appendChild(toast);
+
+      setTimeout(() => {
+        if (toast.parentNode) toast.parentNode.removeChild(toast);
+      }, 3500);
+    }
+
+    /**
+     * Actualiza el badge de usuarios en línea en tiempo real
+     */
+    function updatePresenceDisplay(count, mobileCount, pcCount) {
+      const total = typeof count === 'number' ? Math.max(1, count) : 1;
+      state.onlineUsers = total;
+      state.mobileUsers = mobileCount !== undefined ? mobileCount : 0;
+      state.pcUsers = pcCount !== undefined ? pcCount : 0;
+
+      let breakdown = "";
+      if (typeof mobileCount === 'number' && typeof pcCount === 'number') {
+        breakdown = ` <span class="presence-devices">${mobileCount} 📱 · ${pcCount} 💻</span>`;
+      }
+
+      if (onlineUsersCount) {
+        onlineUsersCount.innerHTML = `<span>${total} ${total === 1 ? 'en línea' : 'en línea'}</span>${breakdown}`;
+      }
+
+      if (rptOnlineUsers) {
+        rptOnlineUsers.textContent = `${total} conectados (${mobileCount || 0} Móvil / ${pcCount || 0} PC)`;
+      }
+    }
+
+    /**
+     * Procesa los eventos emitidos por el servidor, sockets y pestañas
      */
     function handleRealTimeEvent(event, payload) {
       if (!payload) return;
 
       if (event === 'presence:update') {
-        const count = payload.onlineCount || 1;
-        state.onlineUsers = count;
-        onlineUsersCount.textContent = `${count} ${count === 1 ? 'en línea' : 'en línea'}`;
-      } else if (event === 'sync:state') {
-        if (payload.quotas) state.quotas = payload.quotas;
-        if (payload.assignedOfficers) state.assignedOfficers = payload.assignedOfficers;
+        updatePresenceDisplay(payload.onlineCount, payload.mobileCount, payload.pcCount);
+        return;
+      }
+
+      if (event === 'sync:state' || event === 'officer:registered' || event === 'admin:registered' || event === 'officer:updated' || event === 'admin:updated' || event === 'officer:deleted' || event === 'admin:deleted' || event === 'window:quota_updated') {
+        if (payload.quotas) {
+          state.quotas = payload.quotas;
+        }
+
+        if (payload.assignedOfficers) {
+          state.assignedOfficers = payload.assignedOfficers;
+        }
+
+        if (Array.isArray(payload.registeredOfficers)) {
+          state.registeredOfficers = payload.registeredOfficers;
+        } else if (payload.assignedOfficers) {
+          // Reconstruir lista consolidada
+          const all: any[] = [];
+          Object.values(payload.assignedOfficers).forEach((list: any) => {
+            if (Array.isArray(list)) all.push(...list);
+          });
+          state.registeredOfficers = all;
+        }
+
         if (payload.adminOfficer !== undefined) {
           state.adminOfficer = payload.adminOfficer;
           if (payload.adminOfficer) {
@@ -2261,35 +2396,29 @@
             localStorage.removeItem(STORAGE_KEY_ADMIN);
           }
         }
-        if (payload.onlineCount) {
-          state.onlineUsers = payload.onlineCount;
-          onlineUsersCount.textContent = `${payload.onlineCount} ${payload.onlineCount === 1 ? 'en línea' : 'en línea'}`;
+
+        if (payload.onlineCount !== undefined) {
+          updatePresenceDisplay(payload.onlineCount, payload.mobileCount, payload.pcCount);
         }
-        updateInterfaceState();
-      } else if (event === 'admin:registered' || event === 'admin:updated') {
-        if (payload.quotas) state.quotas = payload.quotas;
-        if (payload.assignedOfficers) state.assignedOfficers = payload.assignedOfficers;
-        state.adminOfficer = payload.adminOfficer;
-        if (payload.adminOfficer) {
-          localStorage.setItem(STORAGE_KEY_ADMIN, JSON.stringify(payload.adminOfficer));
-        }
-        updateInterfaceState();
-      } else if (event === 'admin:deleted') {
-        if (payload.quotas) state.quotas = payload.quotas;
-        if (payload.assignedOfficers) state.assignedOfficers = payload.assignedOfficers;
-        state.adminOfficer = null;
-        localStorage.removeItem(STORAGE_KEY_ADMIN);
-        localStorage.removeItem(STORAGE_KEY_STATE);
-        updateInterfaceState();
-      } else if (event === 'window:quota_updated') {
-        if (payload.quotas) state.quotas = payload.quotas;
+
+        // MÓDULO 3: Garantizar persistencia automática en Local Storage
+        saveLogisticDataToLocalStorage();
+
+        // Actualizar interfaz en tiempo real
         renderCommissionDropdown();
         renderDeploymentPanel();
+
+        // Notificaciones visuales tácticas entre dispositivos
+        if ((event === 'officer:registered' || event === 'admin:registered') && payload.officer) {
+          showRealtimeNotification(`Nuevo oficial registrado desde ${payload.officer.deviceType || 'dispositivo'}: ${payload.officer.rank} ${payload.officer.fullName} en ${payload.officer.commissionName}`);
+        } else if (event === 'officer:deleted' || event === 'admin:deleted') {
+          showRealtimeNotification(`Registro actualizado: Oficial retirado y cupo restaurado en tiempo real.`);
+        }
       }
     }
 
     /**
-     * Emite un evento por WebSocket, REST API y BroadcastChannel (garantía total de persistencia)
+     * Emite un evento por WebSocket, REST API y BroadcastChannel (garantía total de sincronización)
      */
     function emitRealTime(type, payload) {
       // 1. WebSocket en tiempo real
@@ -2300,20 +2429,22 @@
       // 2. BroadcastChannel para sincronía inmediata entre pestañas locales
       if (syncChannel) {
         syncChannel.postMessage({
-          event: type === 'register_admin' ? 'admin:registered' : type === 'update_admin' ? 'admin:updated' : type === 'delete_admin' ? 'admin:deleted' : 'window:quota_updated',
+          event: type,
           payload: {
+            officer: payload,
             adminOfficer: state.adminOfficer,
             quotas: state.quotas,
-            assignedOfficers: state.assignedOfficers
+            assignedOfficers: state.assignedOfficers,
+            registeredOfficers: state.registeredOfficers
           }
         });
       }
 
       // 3. Fallback y persistencia REST API
       let endpoint = null;
-      if (type === 'register_admin') endpoint = '/api/register';
-      else if (type === 'update_admin') endpoint = '/api/update';
-      else if (type === 'delete_admin') endpoint = '/api/delete';
+      if (type === 'register_officer' || type === 'register_admin') endpoint = '/api/register';
+      else if (type === 'update_officer' || type === 'update_admin') endpoint = '/api/update';
+      else if (type === 'delete_officer' || type === 'delete_admin') endpoint = '/api/delete';
       else if (type === 'update_window_quota') endpoint = '/api/window_quota';
 
       if (endpoint) {
@@ -2321,7 +2452,7 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload || {})
-        }).catch(err => console.warn('REST fallback notification:', err));
+        }).catch(err => console.warn('REST fallback sync error:', err));
       }
     }
 
@@ -2665,10 +2796,30 @@
             const li = document.createElement("li");
             li.className = "assigned-item";
 
-            // Insignia de Administrador
-            const adminTag = document.createElement("span");
-            adminTag.className = "admin-pill";
-            adminTag.textContent = "👑 ADMIN";
+            // Insignia de Rol / Administrador
+            const isOfficerAdmin = (state.adminOfficer && state.adminOfficer.id === officer.id) || officer.role === "ADMINISTRADOR";
+            if (isOfficerAdmin) {
+              const adminTag = document.createElement("span");
+              adminTag.className = "admin-pill";
+              adminTag.textContent = "👑 ADMIN";
+              li.appendChild(adminTag);
+            } else {
+              const ofcTag = document.createElement("span");
+              ofcTag.className = "step-pill";
+              ofcTag.style.fontSize = "0.625rem";
+              ofcTag.style.padding = "0.1rem 0.35rem";
+              ofcTag.textContent = "🎖️ OFICIAL";
+              li.appendChild(ofcTag);
+            }
+
+            // Distintivo de origen de dispositivo (Móvil vs PC)
+            if (officer.deviceType) {
+              const devTag = document.createElement("span");
+              devTag.className = "device-pill";
+              devTag.textContent = officer.deviceType === 'Móvil' ? '📱 Móvil' : '💻 PC';
+              devTag.title = `Registrado desde ${officer.deviceType}`;
+              li.appendChild(devTag);
+            }
 
             const rankPill = document.createElement("span");
             rankPill.className = "rank-pill";
@@ -2679,11 +2830,10 @@
             nameSpan.textContent = officer.fullName;
             nameSpan.title = officer.fullName;
 
-            li.appendChild(adminTag);
             li.appendChild(rankPill);
             li.appendChild(nameSpan);
 
-            // Acciones directas de Administrador: Modificar o Borrar
+            // Acciones directas de Administrador / Usuario: Modificar o Borrar
             const actionsDiv = document.createElement("div");
             actionsDiv.style.display = "flex";
             actionsDiv.style.gap = "0.25rem";
@@ -2691,20 +2841,19 @@
             const editBtn = document.createElement("button");
             editBtn.type = "button";
             editBtn.className = "btn-inline-action";
-            editBtn.title = "Modificar campos de este registro";
+            editBtn.title = `Modificar datos de ${officer.rank} ${officer.fullName}`;
             editBtn.textContent = "✏️";
             editBtn.addEventListener("click", () => {
-              showModuleRegistration();
-              startEditingRegistration();
+              startEditingOfficer(officer);
             });
 
             const delBtn = document.createElement("button");
             delBtn.type = "button";
             delBtn.className = "btn-inline-action btn-inline-delete";
-            delBtn.title = "Borrar este registro";
+            delBtn.title = `Borrar registro de ${officer.rank} ${officer.fullName} y restaurar cupo`;
             delBtn.textContent = "🗑️";
             delBtn.addEventListener("click", () => {
-              openDeleteAdminModal();
+              openDeleteOfficerModal(officer);
             });
 
             actionsDiv.appendChild(editBtn);
@@ -2725,14 +2874,9 @@
      * FUNCIÓN: Abrir modal de edición de cupo de ventana/comisión (Privilegio de Administrador)
      */
     function editWindowQuota(commissionId, commissionName, currentRemaining) {
-      if (!state.adminOfficer) {
-        showAlert("Solo el Administrador registrado puede modificar las ventanas.");
-        return;
-      }
-
       currentEditingCommissionId = commissionId;
       modalQuotaTitle.textContent = `Ajustar Cupo: ${commissionName}`;
-      modalQuotaDesc.textContent = `Modificar cupo disponible para la ${commissionName} (Control de Administrador).`;
+      modalQuotaDesc.textContent = `Modificar cupo disponible para la ${commissionName} (Control Táctico en Tiempo Real).`;
       modalQuotaInput.value = currentRemaining;
       editQuotaModal.classList.remove("hidden");
       modalQuotaInput.focus();
@@ -2765,30 +2909,39 @@
       }
       const comId = currentEditingCommissionId;
       state.quotas[comId] = newQuota;
+      saveLogisticDataToLocalStorage();
       emitRealTime('update_window_quota', { commissionId: comId, newQuota });
       renderCommissionDropdown();
       renderDeploymentPanel();
       closeQuotaModal();
-      showAlert(`Cupo de comisión actualizado a ${newQuota} por el Administrador.`, "success");
+      showAlert(`Cupo de comisión actualizado a ${newQuota} y sincronizado en tiempo real.`, "success");
     });
 
     /**
-     * FUNCIÓN: Abrir modal para confirmar borrado de registro de Administrador
+     * FUNCIÓN: Abrir modal para confirmar borrado de registro de cualquier oficial
      */
-    function openDeleteAdminModal() {
-      const admin = state.adminOfficer;
-      if (!admin) return;
+    let officerToDelete = null;
+
+    function openDeleteOfficerModal(officer) {
+      officerToDelete = officer || state.adminOfficer;
+      if (!officerToDelete) return;
 
       deleteModalOfficerInfo.innerHTML = `
-        <div><strong>Grado:</strong> ${admin.rank}</div>
-        <div><strong>Nombre:</strong> ${admin.fullName}</div>
-        <div><strong>Comisión Asignada:</strong> ${admin.commissionName}</div>
+        <div><strong>Grado:</strong> ${officerToDelete.rank}</div>
+        <div><strong>Nombre:</strong> ${officerToDelete.fullName}</div>
+        <div><strong>Comisión Asignada:</strong> ${officerToDelete.commissionName}</div>
+        <div><strong>Dispositivo Origen:</strong> ${officerToDelete.deviceType || 'Móvil / PC'}</div>
       `;
       deleteConfirmModal.classList.remove("hidden");
     }
 
+    function openDeleteAdminModal() {
+      openDeleteOfficerModal(state.adminOfficer || (state.registeredOfficers.length > 0 ? state.registeredOfficers[0] : null));
+    }
+
     function closeDeleteModal() {
       deleteConfirmModal.classList.add("hidden");
+      officerToDelete = null;
     }
 
     btnDeleteModalClose.addEventListener("click", closeDeleteModal);
@@ -2796,43 +2949,49 @@
 
     btnDeleteModalConfirm.addEventListener("click", () => {
       closeDeleteModal();
-      executeDeleteAdmin();
+      executeDeleteOfficer();
     });
 
     /**
-     * Ejecutar el borrado definitivo del Administrador y liberar el sistema
+     * Ejecutar el borrado definitivo del oficial y restaurar cupo en tiempo real
      */
-    /**
-     * Ejecutar el borrado definitivo del registro y restaurar cupo en Local Storage
-     */
-    function executeDeleteAdmin() {
-      const admin = state.adminOfficer;
-      if (!admin) return;
+    function executeDeleteOfficer() {
+      const target = officerToDelete || state.adminOfficer;
+      if (!target) return;
 
-      const comId = admin.commissionId;
+      const comId = target.commissionId;
 
       // 1. Restaurar cupo
       if (state.quotas[comId] !== undefined) {
         state.quotas[comId] += 1;
       }
-      state.assignedOfficers[comId] = (state.assignedOfficers[comId] || []).filter(o => o.id !== admin.id);
-      state.registeredOfficers = (state.registeredOfficers || []).filter(o => o.id !== admin.id);
-      state.adminOfficer = state.registeredOfficers.length > 0 ? state.registeredOfficers[0] : null;
+      if (state.assignedOfficers[comId]) {
+        state.assignedOfficers[comId] = state.assignedOfficers[comId].filter(o => o.id !== target.id);
+      }
+      state.registeredOfficers = (state.registeredOfficers || []).filter(o => o.id !== target.id);
+      if (state.adminOfficer && state.adminOfficer.id === target.id) {
+        state.adminOfficer = state.registeredOfficers.length > 0 ? state.registeredOfficers[0] : null;
+      }
       state.isEditing = false;
+      editingOfficer = null;
 
-      // 2. Sincronizar persistencia en Local Storage
+      // 2. Sincronizar persistencia en Local Storage (Módulo 3)
       saveLogisticDataToLocalStorage();
 
       // 3. Emitir evento en tiempo real a todos los clientes y servidor
-      emitRealTime('delete_admin', { id: admin.id, commissionId: comId });
+      emitRealTime('delete_officer', { id: target.id, commissionId: comId });
 
       // 4. Actualizar interfaz
       resetFormToInitial();
       renderCommissionDropdown();
       renderDeploymentPanel();
-      showModuleRegistration();
 
-      showAlert("Registro de oficial eliminado y cupo restaurado en Local Storage.", "success");
+      showAlert(`Oficial ${target.rank} ${target.fullName} eliminado y cupo restaurado en tiempo real.`, "success");
+      officerToDelete = null;
+    }
+
+    function executeDeleteAdmin() {
+      executeDeleteOfficer();
     }
 
     /**
@@ -2847,7 +3006,7 @@
         if (recentBanner) {
           recentBanner.style.display = "flex";
           if (recentOfficerText) recentOfficerText.textContent = `${lastOfficer.rank} ${lastOfficer.fullName} ➔ ${lastOfficer.commissionName}`;
-          if (recentTimeText) recentTimeText.textContent = `Registrado: ${lastOfficer.timestamp || 'Hoy'}`;
+          if (recentTimeText) recentTimeText.textContent = `Registrado: ${lastOfficer.timestamp || 'Hoy'} (${lastOfficer.deviceType || 'Dispositivo'})`;
         }
         if (btnReturnToDeployment) btnReturnToDeployment.style.display = "inline-flex";
       } else {
@@ -2856,42 +3015,13 @@
     }
 
     /**
-     * Bloquea el formulario en modo Administrador Activo
+     * Iniciar edición de un oficial específico
      */
-    function lockRegistrationForm(admin) {
-      if (!admin) return;
-      state.isEditing = false;
+    let editingOfficer = null;
 
-      rankSelect.value = admin.rank;
-      rankSelect.disabled = true;
-      fullNameInput.value = admin.fullName;
-      fullNameInput.disabled = true;
-      commissionSelect.value = admin.commissionId;
-      commissionSelect.disabled = true;
-
-      submitBtn.disabled = true;
-      submitBtn.style.display = "none";
-      btnCancelEdit.style.display = "none";
-
-      alreadyRegisteredBanner.style.display = "flex";
-      alreadyRegisteredText.innerHTML = `Usted está registrado como el <strong>Administrador de la App</strong> (${admin.rank} ${admin.fullName}) asignado a <strong>${admin.commissionName}</strong>. Cuenta con facultades completas para <strong>modificar todos los campos</strong>, <strong>ajustar ventanas</strong> o <strong>borrar registros</strong>.`;
-      
-      registeredActionsBar.style.display = "flex";
-      btnReturnToDeployment.style.display = "inline-flex";
-
-      formHeaderTitle.textContent = "Oficial Administrador de la App (Registrado)";
-      formHeaderBadge.textContent = "👑 Administrador Activo";
-      formHeaderBadge.style.background = "linear-gradient(135deg, rgba(201, 151, 56, 0.3) 0%, rgba(245, 158, 11, 0.3) 100%)";
-      formHeaderBadge.style.color = "#fde68a";
-    }
-
-    /**
-     * Iniciar edición / modificación de todos los campos por el Administrador
-     */
-    function startEditingRegistration() {
-      const admin = state.adminOfficer;
-      if (!admin) return;
-
+    function startEditingOfficer(officer) {
+      if (!officer) return;
+      editingOfficer = officer;
       state.isEditing = true;
 
       // Habilitar todos los campos para edición
@@ -2901,9 +3031,9 @@
 
       renderCommissionDropdown();
 
-      rankSelect.value = admin.rank;
-      fullNameInput.value = admin.fullName;
-      commissionSelect.value = admin.commissionId;
+      rankSelect.value = officer.rank;
+      fullNameInput.value = officer.fullName;
+      commissionSelect.value = officer.commissionId;
 
       submitBtn.disabled = false;
       submitBtn.style.display = "block";
@@ -2912,34 +3042,39 @@
       submitBtn.innerHTML = `<span>💾</span><span>Guardar Modificaciones</span>`;
 
       btnCancelEdit.style.display = "inline-flex";
+      alreadyRegisteredBanner.style.display = "none";
       registeredActionsBar.style.display = "none";
-      btnReturnToDeployment.style.display = "none";
+      btnReturnToDeployment.style.display = "inline-flex";
 
-      formHeaderTitle.textContent = "Modificar Campos del Oficial Administrador";
-      formHeaderBadge.textContent = "✏️ Editando Todos los Campos";
+      formHeaderTitle.textContent = `Modificar Datos de Oficial: ${officer.fullName}`;
+      formHeaderBadge.textContent = "✏️ Editando Registro";
       formHeaderBadge.style.background = "rgba(59, 130, 246, 0.25)";
       formHeaderBadge.style.color = "#93c5fd";
 
+      showModuleRegistration();
       fullNameInput.focus();
       window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function startEditingRegistration() {
+      startEditingOfficer(state.adminOfficer || (state.registeredOfficers.length > 0 ? state.registeredOfficers[0] : null));
     }
 
     /**
      * Cancelar edición
      */
     function cancelEditingRegistration() {
-      if (state.adminOfficer) {
-        lockRegistrationForm(state.adminOfficer);
-      } else {
-        resetFormToInitial();
-      }
+      state.isEditing = false;
+      editingOfficer = null;
+      resetFormToInitial();
     }
 
     /**
-     * Restablece el formulario a su estado inicial para permitir nuevo registro
+     * Restablece el formulario a su estado inicial para permitir nuevo registro de oficiales
      */
     function resetFormToInitial() {
       state.isEditing = false;
+      editingOfficer = null;
       rankSelect.value = "";
       rankSelect.disabled = false;
       fullNameInput.value = "";
@@ -2951,15 +3086,23 @@
       submitBtn.style.display = "block";
       submitBtn.style.opacity = "1";
       submitBtn.style.cursor = "pointer";
-      submitBtn.innerHTML = `<span>Registrar y Asignar</span>`;
+      submitBtn.innerHTML = `<span>Registrar y Asignar Oficial</span>`;
 
       btnCancelEdit.style.display = "none";
-      alreadyRegisteredBanner.style.display = "none";
-      registeredActionsBar.style.display = "none";
-      btnReturnToDeployment.style.display = "none";
+      btnReturnToDeployment.style.display = (state.registeredOfficers.length > 0 || state.adminOfficer) ? "inline-flex" : "none";
 
-      formHeaderTitle.textContent = "Registro de Oficial Administrador de la App";
-      formHeaderBadge.textContent = "Perfil: Administrador";
+      if (state.registeredOfficers.length > 0 || state.adminOfficer) {
+        alreadyRegisteredBanner.style.display = "flex";
+        const adminName = state.adminOfficer ? `${state.adminOfficer.rank} ${state.adminOfficer.fullName}` : 'Designado';
+        alreadyRegisteredText.innerHTML = `Sistema en línea: <strong>${state.registeredOfficers.length} oficial(es) registrado(s)</strong> en tiempo real. Administrador actual: <strong>${adminName}</strong>. Puede registrar más oficiales o ingresar al Panel de Despliegue.`;
+        registeredActionsBar.style.display = "flex";
+      } else {
+        alreadyRegisteredBanner.style.display = "none";
+        registeredActionsBar.style.display = "none";
+      }
+
+      formHeaderTitle.textContent = "Registro de Personal Militar";
+      formHeaderBadge.textContent = "Sincronizado en Tiempo Real";
       formHeaderBadge.style.background = "var(--accent-gold-soft)";
       formHeaderBadge.style.color = "var(--accent-gold)";
     }
@@ -2968,8 +3111,8 @@
      * Navegación hacia Módulo 2 - Panel de Despliegue
      */
     function showModuleDeployment() {
-      if (!state.adminOfficer) {
-        showAlert("ACCESO RESTRINGIDO: Solamente una vez registrado y asignado podrá tener acceso al Panel de Despliegue.");
+      if (!state.adminOfficer && state.registeredOfficers.length === 0) {
+        showAlert("ACCESO RESTRINGIDO: Registre al menos un oficial para visualizar el Panel de Despliegue.");
         return;
       }
 
@@ -2981,9 +3124,12 @@
       moduleBadge.style.borderColor = "var(--primary)";
       moduleBadge.style.color = "#34d399";
 
-      recentBanner.style.display = "flex";
-      recentOfficerText.textContent = `${state.adminOfficer.rank} ${state.adminOfficer.fullName} ➔ ${state.adminOfficer.commissionName}`;
-      recentTimeText.textContent = `Asignado: ${state.adminOfficer.timestamp || 'Hoy'}`;
+      const currentAdmin = state.adminOfficer || state.registeredOfficers[0];
+      if (recentBanner && currentAdmin) {
+        recentBanner.style.display = "flex";
+        recentOfficerText.textContent = `${currentAdmin.rank} ${currentAdmin.fullName} ➔ ${currentAdmin.commissionName}`;
+        recentTimeText.textContent = `Asignado: ${currentAdmin.timestamp || 'Hoy'} (${currentAdmin.deviceType || 'Dispositivo'})`;
+      }
 
       renderDeploymentPanel();
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -3003,18 +3149,15 @@
 
       renderCommissionDropdown();
 
-      if (state.adminOfficer && !state.isEditing) {
-        lockRegistrationForm(state.adminOfficer);
-      } else if (!state.adminOfficer) {
+      if (!state.isEditing) {
         resetFormToInitial();
-        fullNameInput.focus();
       }
 
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
     /**
-     * Manejador del Formulario: Registro o Modificación
+     * Manejador del Formulario: Registro o Modificación en Tiempo Real
      */
     form.addEventListener("submit", function (e) {
       e.preventDefault();
@@ -3022,17 +3165,16 @@
       const rank = rankSelect.value.trim();
       const fullName = fullNameInput.value.trim().toUpperCase();
       const commissionId = commissionSelect.value;
-      const currentAdmin = state.adminOfficer;
 
       // Validación de campos obligatorios
       if (!rank) {
-        showAlert("Debe seleccionar el Grado Militar del Oficial Administrador.");
+        showAlert("Debe seleccionar el Grado Militar del Oficial.");
         rankSelect.focus();
         return;
       }
 
       if (!fullName) {
-        showAlert("Debe ingresar el Nombre Completo del Oficial Administrador.");
+        showAlert("Debe ingresar el Nombre Completo del Oficial.");
         fullNameInput.focus();
         return;
       }
@@ -3043,9 +3185,10 @@
         return;
       }
 
-      // CASO 1: EL ADMINISTRADOR ESTÁ MODIFICANDO SUS CAMPOS
-      if (state.isEditing && currentAdmin) {
-        const oldCommissionId = currentAdmin.commissionId;
+      // CASO 1: MODIFICACIÓN DE UN OFICIAL EXISTENTE
+      if (state.isEditing && editingOfficer) {
+        const targetOfficer = editingOfficer;
+        const oldCommissionId = targetOfficer.commissionId;
 
         // Si cambió de comisión, verificar cupo en la nueva
         if (commissionId !== oldCommissionId) {
@@ -3057,59 +3200,69 @@
           // Liberar cupo anterior y ocupar el nuevo
           state.quotas[oldCommissionId] = (state.quotas[oldCommissionId] || 0) + 1;
           state.quotas[commissionId] -= 1;
-          state.assignedOfficers[oldCommissionId] = (state.assignedOfficers[oldCommissionId] || []).filter(o => o.id !== currentAdmin.id);
+          if (state.assignedOfficers[oldCommissionId]) {
+            state.assignedOfficers[oldCommissionId] = state.assignedOfficers[oldCommissionId].filter(o => o.id !== targetOfficer.id);
+          }
         }
 
         const com = COMMISSIONS_DATA.find(c => c.id === commissionId);
         const commissionName = com ? com.name : commissionId;
 
-        const updatedAdmin = {
-          ...currentAdmin,
+        const updatedOfficer = {
+          ...targetOfficer,
           rank: rank,
           fullName: fullName,
           commissionId: commissionId,
           commissionName: commissionName,
+          deviceType: clientDeviceType,
           timestamp: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
         };
 
-        state.adminOfficer = updatedAdmin;
-        if (!state.assignedOfficers[commissionId]) state.assignedOfficers[commissionId] = [];
-        const existingIdx = state.assignedOfficers[commissionId].findIndex(o => o.id === updatedAdmin.id);
-        if (existingIdx >= 0) {
-          state.assignedOfficers[commissionId][existingIdx] = updatedAdmin;
-        } else {
-          state.assignedOfficers[commissionId].push(updatedAdmin);
+        if (state.adminOfficer && state.adminOfficer.id === targetOfficer.id) {
+          state.adminOfficer = updatedOfficer;
         }
 
-        const regIdx = state.registeredOfficers.findIndex(o => o.id === updatedAdmin.id);
-        if (regIdx >= 0) {
-          state.registeredOfficers[regIdx] = updatedAdmin;
+        if (!state.assignedOfficers[commissionId]) {
+          state.assignedOfficers[commissionId] = [];
+        }
+        const existingIdx = state.assignedOfficers[commissionId].findIndex(o => o.id === updatedOfficer.id);
+        if (existingIdx >= 0) {
+          state.assignedOfficers[commissionId][existingIdx] = updatedOfficer;
         } else {
-          state.registeredOfficers.push(updatedAdmin);
+          state.assignedOfficers[commissionId].push(updatedOfficer);
+        }
+
+        const regIdx = state.registeredOfficers.findIndex(o => o.id === updatedOfficer.id);
+        if (regIdx >= 0) {
+          state.registeredOfficers[regIdx] = updatedOfficer;
+        } else {
+          state.registeredOfficers.push(updatedOfficer);
         }
 
         state.isEditing = false;
+        editingOfficer = null;
 
-        // Persistir en Local Storage
+        // Persistir en Local Storage (Módulo 3)
         saveLogisticDataToLocalStorage();
 
-        // Notificar en tiempo real al servidor y otros usuarios
-        emitRealTime('update_admin', {
-          id: updatedAdmin.id,
-          rank: updatedAdmin.rank,
-          fullName: updatedAdmin.fullName,
-          commissionId: updatedAdmin.commissionId,
-          oldCommissionId: oldCommissionId
+        // Notificar en tiempo real al servidor y otros usuarios en móvil o PC
+        emitRealTime('update_officer', {
+          id: updatedOfficer.id,
+          rank: updatedOfficer.rank,
+          fullName: updatedOfficer.fullName,
+          commissionId: updatedOfficer.commissionId,
+          oldCommissionId: oldCommissionId,
+          deviceType: clientDeviceType
         });
 
         renderCommissionDropdown();
         renderDeploymentPanel();
         showModuleDeployment();
-        showAlert("Modificaciones guardadas en Local Storage y actualizadas en el Panel de Despliegue.", "success");
+        showAlert(`Oficial ${updatedOfficer.fullName} modificado y sincronizado en tiempo real.`, "success");
         return;
       }
 
-      // CASO 2: REGISTRO DE OFICIAL EN EL FORMULARIO (MÓDULO 3)
+      // CASO 2: REGISTRO DE NUEVO OFICIAL EN EL FORMULARIO (MÓDULO 3 + TIEMPO REAL)
       // Verificación estricta de disponibilidad de cupo (BLOQUEO TÁCTICO)
       const currentQuota = state.quotas[commissionId];
       if (currentQuota <= 0) {
@@ -3124,18 +3277,20 @@
       // 1. Restar 1 al cupo de la comisión seleccionada
       state.quotas[commissionId] -= 1;
 
-      // 2. Crear objeto del nuevo oficial registrado
+      // 2. Crear objeto del nuevo oficial registrado con identificación de dispositivo
+      const isFirst = (!state.adminOfficer && state.registeredOfficers.length === 0);
       const newOfficer = {
-        id: "oficial_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5),
+        id: "oficial_" + Date.now() + "_" + Math.random().toString(36).substr(2, 6),
         rank: rank,
         fullName: fullName,
         commissionId: commissionId,
         commissionName: commissionName,
-        role: (!state.adminOfficer && state.registeredOfficers.length === 0) ? "ADMINISTRADOR" : "OFICIAL",
+        role: isFirst ? "ADMINISTRADOR" : "OFICIAL",
+        deviceType: clientDeviceType,
         timestamp: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
       };
 
-      if (!state.adminOfficer) {
+      if (!state.adminOfficer || isFirst) {
         state.adminOfficer = newOfficer;
       }
       state.registeredOfficers.push(newOfficer);
@@ -3147,14 +3302,14 @@
       // 3. MÓDULO 3: Guardar inmediatamente en Local Storage
       saveLogisticDataToLocalStorage();
 
-      // 4. Emitir al servidor y clientes en tiempo real
-      emitRealTime('register_admin', newOfficer);
+      // 4. Emitir al servidor y a todos los dispositivos (Móvil y PC) en tiempo real
+      emitRealTime('register_officer', newOfficer);
 
-      // 5. Actualizar interfaz: reconstruir dropdown con cupos y tarjetas de comisiones
+      // 5. Actualizar interfaz: dropdown con cupos y tarjetas de comisiones
       renderCommissionDropdown();
       renderDeploymentPanel();
 
-      // Limpiar campos del formulario para permitir nuevos registros
+      // Limpiar campos del formulario para permitir que se registren más oficiales de inmediato
       rankSelect.value = "";
       fullNameInput.value = "";
       commissionSelect.value = "";
@@ -3168,11 +3323,11 @@
       if (recentBanner) {
         recentBanner.style.display = "flex";
         if (recentOfficerText) recentOfficerText.textContent = `${newOfficer.rank} ${newOfficer.fullName} ➔ ${newOfficer.commissionName}`;
-        if (recentTimeText) recentTimeText.textContent = `Registrado: ${newOfficer.timestamp}`;
+        if (recentTimeText) recentTimeText.textContent = `Registrado: ${newOfficer.timestamp} (${clientDeviceType})`;
       }
 
       alertFeedback.style.display = "none";
-      showAlert(`Oficial ${newOfficer.rank} ${newOfficer.fullName} registrado y guardado exitosamente en Local Storage.`, "success");
+      showAlert(`Oficial ${newOfficer.rank} ${newOfficer.fullName} registrado y sincronizado en tiempo real en todos los dispositivos (${clientDeviceType}).`, "success");
     });
 
     // Eventos de botones
@@ -3193,7 +3348,7 @@
     // Botón Cerrar Sesión en el Panel de Despliegue: Retorna al Módulo 1: Registro
     btnLogout.addEventListener("click", function () {
       showModuleRegistration();
-      showAlert("Sesión cerrada. Ha retornado al Módulo 1: Registro.", "success");
+      showAlert("Retornado al Módulo 1: Registro.", "success");
     });
 
     /**
@@ -3925,31 +4080,29 @@
       //    c) Actualizar las opciones del selector (Dropdown) inhabilitando comisiones con cupo 0.
       const hasRecovered = loadLogisticDataFromLocalStorage();
 
-      // 2. Conectar WebSocket en tiempo real si está disponible
+      // 2. Conectar WebSocket en tiempo real con detección móvil/PC
       initWebSocket();
 
-      // 3. Sincronización pasiva con el servidor (ESTRICTO: NUNCA SOBRESCRIBIR NI ELIMINAR LOCAL STORAGE)
+      // 3. Sincronización en tiempo real con el servidor (para sincronizar entre Móvil y PC)
       fetch('/api/state')
         .then(res => res.json())
         .then(data => {
-          if (data && data.onlineCount) {
-            state.onlineUsers = data.onlineCount;
-            if (onlineUsersCount) {
-              onlineUsersCount.textContent = `${data.onlineCount} ${data.onlineCount === 1 ? 'en línea' : 'en línea'}`;
+          if (data) {
+            // Si el servidor tiene datos en línea, sincronizar íntegramente
+            if (data.registeredOfficers && data.registeredOfficers.length > 0) {
+              handleRealTimeEvent('sync:state', data);
+            } else if (hasRecovered && state.registeredOfficers.length > 0) {
+              // Si el cliente local tiene oficiales guardados y el servidor está limpio, sembrar al servidor
+              state.registeredOfficers.forEach(ofc => {
+                emitRealTime('register_officer', ofc);
+              });
+            } else {
+              handleRealTimeEvent('sync:state', data);
             }
           }
-          // Si el servidor cuenta con datos y Local Storage estaba totalmente virgen, inicializarlo
-          if (!hasRecovered && data && data.quotas && data.assignedOfficers) {
-            if (data.quotas) state.quotas = data.quotas;
-            if (data.assignedOfficers) state.assignedOfficers = data.assignedOfficers;
-            if (data.adminOfficer) state.adminOfficer = data.adminOfficer;
-            saveLogisticDataToLocalStorage();
-            renderCommissionDropdown();
-            renderDeploymentPanel();
-          }
         })
-        .catch(() => {
-          // LocalStorage es autoritativo y permanece intacto
+        .catch(err => {
+          console.warn("Consulta inicial de estado REST:", err);
         });
 
       // 4. Asegurar actualización inicial de la interfaz

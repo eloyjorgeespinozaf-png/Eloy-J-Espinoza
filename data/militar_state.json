@@ -1,0 +1,35 @@
+{
+  "adminOfficer": null,
+  "registeredOfficers": [],
+  "quotas": {
+    "com_org": 5,
+    "com_insc": 5,
+    "com_dors": 3,
+    "com_med": 3,
+    "com_hidr": 14,
+    "com_part": 5,
+    "com_lleg": 5,
+    "com_prem": 5,
+    "com_seg": 20,
+    "com_cron": 8,
+    "com_ruta": 16,
+    "com_ausp": 8,
+    "com_econ": 2
+  },
+  "assignedOfficers": {
+    "com_org": [],
+    "com_insc": [],
+    "com_dors": [],
+    "com_med": [],
+    "com_hidr": [],
+    "com_part": [],
+    "com_lleg": [],
+    "com_prem": [],
+    "com_seg": [],
+    "com_cron": [],
+    "com_ruta": [],
+    "com_ausp": [],
+    "com_econ": []
+  },
+  "lastUpdated": "2026-10-15T05:26:49.292Z"
+}
