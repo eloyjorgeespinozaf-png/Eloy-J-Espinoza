@@ -137,6 +137,60 @@
       font-weight: 600;
     }
 
+    /* Control de Roles: Botón Selector de Perfil (Administrador vs Usuario) */
+    .role-badge-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.25s ease;
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    .role-badge-btn.admin-mode {
+      background: rgba(201, 151, 56, 0.22);
+      border-color: var(--accent-gold);
+      color: #fde68a;
+      box-shadow: 0 0 10px rgba(201, 151, 56, 0.25);
+    }
+    .role-badge-btn.admin-mode:hover {
+      background: rgba(201, 151, 56, 0.35);
+      transform: translateY(-1px);
+    }
+
+    .role-badge-btn.user-mode {
+      background: rgba(59, 130, 246, 0.18);
+      border-color: rgba(59, 130, 246, 0.45);
+      color: #93c5fd;
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.15);
+    }
+    .role-badge-btn.user-mode:hover {
+      background: rgba(59, 130, 246, 0.3);
+      transform: translateY(-1px);
+    }
+
+    .role-switch-chevron {
+      font-size: 0.65rem;
+      opacity: 0.75;
+      margin-left: 0.15rem;
+    }
+
+    /* Regla Fundamental: Ocultar controles y botones administrativos cuando el perfil es Usuario */
+    body.role-usuario .admin-only {
+      display: none !important;
+    }
+
+    body.role-admin .user-only {
+      display: none !important;
+    }
+
     .sync-toast {
       position: fixed;
       bottom: 1.5rem;
@@ -1557,21 +1611,27 @@
         <div class="header-badge" id="moduleBadge">
           <span>Módulo 1: Registro</span>
         </div>
-        <!-- Botón para Personalizar Escudo y Fondo -->
-        <button type="button" class="btn-customizer-trigger" id="btnOpenThemeModal" title="Personalizar Escudo y Fondo de la App">
+        <!-- Selector interactivo de Perfil (Administrador vs Usuario) -->
+        <button type="button" class="role-badge-btn user-mode" id="btnRoleSwitcher" title="Haga clic para alternar entre Perfil Usuario y Perfil Administrador">
+          <span id="roleIcon">👤</span>
+          <span id="roleLabel">Perfil: Usuario</span>
+          <span class="role-switch-chevron">▾</span>
+        </button>
+        <!-- Botón para Personalizar Escudo y Fondo (Solo Administrador) -->
+        <button type="button" class="btn-customizer-trigger admin-only" id="btnOpenThemeModal" title="Personalizar Escudo y Fondo de la App (Solo Administrador)">
           <span>🎨 Escudo y Fondos</span>
         </button>
       </div>
     </header>
 
-    <!-- MÓDULO 1: FORMULARIO DE REGISTRO DE ADMINISTRADOR DE LA APP -->
+    <!-- MÓDULO 1: FORMULARIO DE REGISTRO Y ASIGNACIÓN A COMISIONES -->
     <section class="card" id="moduleRegistrationCard">
       <div class="card-header">
         <h2>
           <span class="escudo-container escudo-card-size" id="module1Escudo">👑</span>
-          <span id="formHeaderTitle">Registro de Oficial Administrador de la App</span>
+          <span id="formHeaderTitle">Registro de Personal Militar y Asignación</span>
         </h2>
-        <span class="admin-role-badge" id="formHeaderBadge">Perfil: Administrador</span>
+        <span class="admin-role-badge" id="formHeaderBadge">Perfil: Usuario</span>
       </div>
       <div class="card-body">
         <div id="alertFeedback" class="alert alert-danger" role="alert"></div>
@@ -1581,15 +1641,15 @@
           <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
             <div style="display: flex; align-items: center; gap: 0.5rem; font-weight: 700; text-transform: uppercase;">
               <span>👑</span>
-              <span id="registeredBannerTitle">Oficial Administrador Activo (1/1)</span>
+              <span id="registeredBannerTitle">Oficial Administrador Activo</span>
             </div>
-            <span class="step-pill" style="font-size: 0.7rem; background: rgba(201,151,56,0.2); border-color: var(--accent-gold); color: #fde68a;">Control Total</span>
+            <span class="step-pill admin-only" style="font-size: 0.7rem; background: rgba(201,151,56,0.2); border-color: var(--accent-gold); color: #fde68a;">Control Total</span>
           </div>
           <div id="alreadyRegisteredText" style="font-size: 0.85rem; line-height: 1.4;">
-            Usted está registrado como el Administrador de la App. Tiene la facultad exclusiva de modificar todos los campos, comisiones, ventanas o borrar el registro para liberar el sistema.
+            Sistema en línea. Ingrese los datos en el formulario para registrarse y asignarse a una comisión disponible.
           </div>
-          <!-- Acciones de Administrador -->
-          <div id="registeredActionsBar" style="display: flex; gap: 0.5rem; width: 100%; margin-top: 0.35rem; flex-wrap: wrap;">
+          <!-- Acciones de Administrador (Exclusivas de Administrador) -->
+          <div id="registeredActionsBar" class="admin-only" style="display: flex; gap: 0.5rem; width: 100%; margin-top: 0.35rem; flex-wrap: wrap;">
             <button type="button" class="btn-edit" id="btnStartEdit">
               <span>✏️ Modificar Campos</span>
             </button>
@@ -1668,28 +1728,28 @@
       </div>
     </section>
 
-    <!-- MÓDULO 2: PANEL DE DESPLIEGUE (Control de Administrador) -->
+    <!-- MÓDULO 2: PANEL DE DESPLIEGUE -->
     <section class="card hidden" id="moduleDeploymentCard">
       <div class="card-header">
         <h2>
           <span class="escudo-container escudo-card-size" id="module2Escudo">🎖️</span>
-          <span>Módulo 2 - Panel de Despliegue (Control Administrador)</span>
+          <span id="deploymentCardTitle">Módulo 2 - Panel de Despliegue de Comisiones</span>
         </h2>
         <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-          <span class="admin-role-badge">
-            👑 Administrador Registrado (1/1)
+          <span class="admin-role-badge" id="deploymentRoleBadge">
+            👤 Perfil: Usuario
           </span>
-          <button type="button" class="btn-customizer-trigger" id="btnOpenThemeModalDeployment" style="padding: 0.35rem 0.75rem; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 0.35rem;" title="Personalizar Escudo y Fondo">
+          <button type="button" class="btn-customizer-trigger admin-only" id="btnOpenThemeModalDeployment" style="padding: 0.35rem 0.75rem; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 0.35rem;" title="Personalizar Escudo y Fondo (Solo Administrador)">
             <span>🎨 Escudo y Fondos</span>
           </button>
           <button type="button" class="btn-print" id="btnPrintDeploymentPdf" style="padding: 0.35rem 0.75rem; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 0.35rem;">
             <span>🖨️ Imprimir en PDF</span>
           </button>
           <button type="button" class="btn-secondary" id="btnBackToRegister" style="padding: 0.3rem 0.65rem; font-size: 0.75rem;">
-            <span>👁️ Ver / Modificar Mi Registro</span>
+            <span>➕ Registrar Oficial</span>
           </button>
-          <button type="button" class="btn-delete" id="btnLogout" style="padding: 0.35rem 0.75rem; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 0.35rem;">
-            <span>🚪 Cerrar Sesión</span>
+          <button type="button" class="btn-delete admin-only" id="btnLogout" style="padding: 0.35rem 0.75rem; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 0.35rem;" title="Salir de Modo Administrador y regresar a Perfil Usuario">
+            <span>🚪 Salir de Modo Admin</span>
           </button>
         </div>
       </div>
@@ -1698,7 +1758,7 @@
         <div class="recent-assignment-banner" id="recentBanner" style="display: none;">
           <div style="display: flex; flex-direction: column; gap: 0.2rem;">
             <div class="recent-text">
-              <span>👑 Oficial Administrador: </span>
+              <span>👑 Asignación Principal: </span>
               <strong id="recentOfficerText">--</strong>
             </div>
             <span style="font-size: 0.75rem; color: #fde68a;" id="recentTimeText">--:--:--</span>
@@ -1707,10 +1767,10 @@
             <button type="button" class="btn-print" id="btnBannerPrintPdf" style="font-size: 0.75rem; padding: 0.4rem 0.75rem;">
               <span>🖨️ Imprimir en PDF</span>
             </button>
-            <button type="button" class="btn-edit" id="btnBannerEdit" style="font-size: 0.75rem; padding: 0.4rem 0.75rem;">
+            <button type="button" class="btn-edit admin-only" id="btnBannerEdit" style="font-size: 0.75rem; padding: 0.4rem 0.75rem;">
               <span>✏️ Modificar Registro</span>
             </button>
-            <button type="button" class="btn-delete" id="btnBannerDelete" style="font-size: 0.75rem; padding: 0.4rem 0.75rem;">
+            <button type="button" class="btn-delete admin-only" id="btnBannerDelete" style="font-size: 0.75rem; padding: 0.4rem 0.75rem;">
               <span>🗑️ Borrar Registro</span>
             </button>
           </div>
@@ -1745,6 +1805,77 @@
       <div class="modal-footer">
         <button type="button" class="btn-secondary" id="btnQuotaModalCancel">Cancelar</button>
         <button type="button" class="btn-submit" id="btnQuotaModalSave" style="width: auto; padding: 0.65rem 1.25rem;">Guardar Cupo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Autenticación para Perfil de Administrador -->
+  <div class="modal-overlay hidden" id="adminAuthModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span style="font-size: 1.25rem;">🔐</span>
+          <div>
+            <h3 style="margin: 0; font-size: 1rem;">Acceso al Perfil de Administrador</h3>
+            <span style="font-size: 0.72rem; color: #94a3b8;">Desbloqueo de controles de gestión de cupos y comisiones</span>
+          </div>
+        </div>
+        <button type="button" class="modal-close" id="btnAdminAuthClose">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem; line-height: 1.4;">
+          El perfil de <strong>Administrador</strong> tiene acceso exclusivo a modificar cupos de comisiones, editar o borrar registros de oficiales, y personalizar escudo y fondos.
+        </p>
+        <div class="form-group" style="margin-bottom: 0.5rem;">
+          <label for="adminAuthPasswordInput">Clave de Acceso de Administrador:</label>
+          <input
+            type="password"
+            id="adminAuthPasswordInput"
+            placeholder="Ingrese clave de administrador..."
+            autocomplete="current-password"
+            style="width: 100%; font-size: 1rem; padding: 0.65rem;"
+          />
+          <div style="font-size: 0.75rem; color: #fde68a; margin-top: 0.35rem;">
+            💡 Clave táctica predeterminada: <strong>admin123</strong>
+          </div>
+        </div>
+        <div id="adminAuthError" class="alert alert-danger" style="display: none; margin-top: 0.5rem; font-size: 0.8rem; padding: 0.5rem;"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" id="btnAdminAuthCancel">Cancelar</button>
+        <button type="button" class="btn-submit" id="btnAdminAuthConfirm" style="width: auto; padding: 0.65rem 1.25rem;">
+          <span>🔓 Desbloquear Administrador</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal para Confirmar Cambio a Perfil Usuario -->
+  <div class="modal-overlay hidden" id="switchToUserModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span style="font-size: 1.25rem;">👤</span>
+          <div>
+            <h3 style="margin: 0; font-size: 1rem;">Cambiar a Perfil Usuario</h3>
+            <span style="font-size: 0.72rem; color: #94a3b8;">Vista para registro y asignación</span>
+          </div>
+        </div>
+        <button type="button" class="modal-close" id="btnSwitchUserClose">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.4;">
+          Al cambiar al <strong>Perfil Usuario</strong>, se ocultarán todos los botones de administración (modificar cupos, editar personal, borrar registros) y solo se mostrarán los botones necesarios para el registro y la asignación a comisiones.
+        </p>
+        <p style="font-size: 0.8rem; color: #94a3b8; margin-top: 0.5rem;">
+          Podrá volver al perfil de Administrador en cualquier momento ingresando la clave.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" id="btnSwitchUserCancel">Permanecer Administrador</button>
+        <button type="button" class="btn-submit" id="btnSwitchUserConfirm" style="width: auto; padding: 0.65rem 1.25rem; background: #3b82f6; border-color: #60a5fa;">
+          <span>👤 Activar Modo Usuario</span>
+        </button>
       </div>
     </div>
   </div>
@@ -2156,7 +2287,8 @@
       assignedOfficers: {},
       registeredOfficers: [],
       isEditing: false,
-      onlineUsers: 1
+      onlineUsers: 1,
+      currentRole: localStorage.getItem('militar_current_role') || 'USUARIO' // 'ADMINISTRADOR' | 'USUARIO'
     };
 
     // Inicializar cupos y colecciones
@@ -2170,8 +2302,15 @@
     const moduleBadge = document.getElementById("moduleBadge");
     const onlineUsersCount = document.getElementById("onlineUsersCount");
 
+    // Elementos del Selector de Rol / Perfil
+    const btnRoleSwitcher = document.getElementById("btnRoleSwitcher");
+    const roleIcon = document.getElementById("roleIcon");
+    const roleLabel = document.getElementById("roleLabel");
+
     const moduleRegistrationCard = document.getElementById("moduleRegistrationCard");
     const moduleDeploymentCard = document.getElementById("moduleDeploymentCard");
+    const deploymentRoleBadge = document.getElementById("deploymentRoleBadge");
+    const deploymentCardTitle = document.getElementById("deploymentCardTitle");
 
     const form = document.getElementById("militaryRegistrationForm");
     const formHeaderTitle = document.getElementById("formHeaderTitle");
@@ -2200,6 +2339,20 @@
     const btnBannerDelete = document.getElementById("btnBannerDelete");
     const btnBackToRegister = document.getElementById("btnBackToRegister");
     const btnLogout = document.getElementById("btnLogout");
+
+    // Elementos del Modal de Autenticación de Administrador
+    const adminAuthModal = document.getElementById("adminAuthModal");
+    const adminAuthPasswordInput = document.getElementById("adminAuthPasswordInput");
+    const adminAuthError = document.getElementById("adminAuthError");
+    const btnAdminAuthConfirm = document.getElementById("btnAdminAuthConfirm");
+    const btnAdminAuthCancel = document.getElementById("btnAdminAuthCancel");
+    const btnAdminAuthClose = document.getElementById("btnAdminAuthClose");
+
+    // Elementos del Modal para Cambiar a Perfil Usuario
+    const switchToUserModal = document.getElementById("switchToUserModal");
+    const btnSwitchUserConfirm = document.getElementById("btnSwitchUserConfirm");
+    const btnSwitchUserCancel = document.getElementById("btnSwitchUserCancel");
+    const btnSwitchUserClose = document.getElementById("btnSwitchUserClose");
 
     // Elementos de Modales Tácticos In-App
     const editQuotaModal = document.getElementById("editQuotaModal");
@@ -2241,6 +2394,7 @@
     const rptSignAdminRank = document.getElementById("rptSignAdminRank");
 
     let currentEditingCommissionId = null;
+    let editingOfficer = null;
     let alertTimeout = null;
 
     // Sincronización entre pestañas en tiempo real
@@ -2381,8 +2535,8 @@
           state.registeredOfficers = payload.registeredOfficers;
         } else if (payload.assignedOfficers) {
           // Reconstruir lista consolidada
-          const all: any[] = [];
-          Object.values(payload.assignedOfficers).forEach((list: any) => {
+          const all = [];
+          Object.values(payload.assignedOfficers).forEach(list => {
             if (Array.isArray(list)) all.push(...list);
           });
           state.registeredOfficers = all;
@@ -2649,7 +2803,7 @@
      */
     function renderCommissionDropdown() {
       const currentSelectedValue = commissionSelect.value;
-      const admin = state.adminOfficer;
+      const currentOfficerBeingEdited = editingOfficer || state.adminOfficer;
 
       commissionSelect.innerHTML = '<option value="" disabled selected>-- Seleccione una comisión --</option>';
 
@@ -2657,8 +2811,8 @@
 
       COMMISSIONS_DATA.forEach(com => {
         let remaining = state.quotas[com.id];
-        // En modo edición, el Administrador puede mantener su comisión actual
-        if (state.isEditing && admin && admin.commissionId === com.id) {
+        // En modo edición, el oficial que se está editando puede mantener su comisión actual
+        if (state.isEditing && currentOfficerBeingEdited && currentOfficerBeingEdited.commissionId === com.id) {
           remaining = (remaining || 0) + 1;
         }
 
@@ -2677,10 +2831,10 @@
         commissionSelect.appendChild(option);
       });
 
-      if (currentSelectedValue && (state.quotas[currentSelectedValue] > 0 || (state.isEditing && admin && admin.commissionId === currentSelectedValue))) {
+      if (currentSelectedValue && (state.quotas[currentSelectedValue] > 0 || (state.isEditing && currentOfficerBeingEdited && currentOfficerBeingEdited.commissionId === currentSelectedValue))) {
         commissionSelect.value = currentSelectedValue;
-      } else if (state.isEditing && admin) {
-        commissionSelect.value = admin.commissionId;
+      } else if (state.isEditing && currentOfficerBeingEdited) {
+        commissionSelect.value = currentOfficerBeingEdited.commissionId;
       } else {
         commissionSelect.value = "";
       }
@@ -2741,11 +2895,12 @@
         title.textContent = com.name;
         header.appendChild(title);
 
-        // Control de Administrador para editar la ventana (ajuste de cupo)
-        if (admin) {
+        // Control de Administrador para editar la ventana (ajuste de cupo) - SOLO EN PERFIL ADMINISTRADOR
+        const isAdministrator = state.currentRole === 'ADMINISTRADOR';
+        if (isAdministrator) {
           const editWindowBtn = document.createElement("button");
           editWindowBtn.type = "button";
-          editWindowBtn.className = "btn-inline-action";
+          editWindowBtn.className = "btn-inline-action admin-only";
           editWindowBtn.title = "Administrador: Modificar cupo de esta ventana";
           editWindowBtn.innerHTML = `<span>⚙️</span>`;
           editWindowBtn.addEventListener("click", () => editWindowQuota(com.id, com.name, remaining));
@@ -2833,32 +2988,35 @@
             li.appendChild(rankPill);
             li.appendChild(nameSpan);
 
-            // Acciones directas de Administrador / Usuario: Modificar o Borrar
-            const actionsDiv = document.createElement("div");
-            actionsDiv.style.display = "flex";
-            actionsDiv.style.gap = "0.25rem";
+            // Acciones directas exclusivas para el Administrador: Modificar o Borrar
+            if (isAdministrator) {
+              const actionsDiv = document.createElement("div");
+              actionsDiv.className = "admin-only";
+              actionsDiv.style.display = "flex";
+              actionsDiv.style.gap = "0.25rem";
 
-            const editBtn = document.createElement("button");
-            editBtn.type = "button";
-            editBtn.className = "btn-inline-action";
-            editBtn.title = `Modificar datos de ${officer.rank} ${officer.fullName}`;
-            editBtn.textContent = "✏️";
-            editBtn.addEventListener("click", () => {
-              startEditingOfficer(officer);
-            });
+              const editBtn = document.createElement("button");
+              editBtn.type = "button";
+              editBtn.className = "btn-inline-action";
+              editBtn.title = `Modificar datos de ${officer.rank} ${officer.fullName}`;
+              editBtn.textContent = "✏️";
+              editBtn.addEventListener("click", () => {
+                startEditingOfficer(officer);
+              });
 
-            const delBtn = document.createElement("button");
-            delBtn.type = "button";
-            delBtn.className = "btn-inline-action btn-inline-delete";
-            delBtn.title = `Borrar registro de ${officer.rank} ${officer.fullName} y restaurar cupo`;
-            delBtn.textContent = "🗑️";
-            delBtn.addEventListener("click", () => {
-              openDeleteOfficerModal(officer);
-            });
+              const delBtn = document.createElement("button");
+              delBtn.type = "button";
+              delBtn.className = "btn-inline-action btn-inline-delete";
+              delBtn.title = `Borrar registro de ${officer.rank} ${officer.fullName} y restaurar cupo`;
+              delBtn.textContent = "🗑️";
+              delBtn.addEventListener("click", () => {
+                openDeleteOfficerModal(officer);
+              });
 
-            actionsDiv.appendChild(editBtn);
-            actionsDiv.appendChild(delBtn);
-            li.appendChild(actionsDiv);
+              actionsDiv.appendChild(editBtn);
+              actionsDiv.appendChild(delBtn);
+              li.appendChild(actionsDiv);
+            }
 
             ul.appendChild(li);
           });
@@ -2874,6 +3032,11 @@
      * FUNCIÓN: Abrir modal de edición de cupo de ventana/comisión (Privilegio de Administrador)
      */
     function editWindowQuota(commissionId, commissionName, currentRemaining) {
+      if (state.currentRole !== 'ADMINISTRADOR') {
+        showAlert("El ajuste de cupos está reservado exclusivamente para el Administrador.");
+        openAdminAuthModal();
+        return;
+      }
       currentEditingCommissionId = commissionId;
       modalQuotaTitle.textContent = `Ajustar Cupo: ${commissionName}`;
       modalQuotaDesc.textContent = `Modificar cupo disponible para la ${commissionName} (Control Táctico en Tiempo Real).`;
@@ -2923,6 +3086,11 @@
     let officerToDelete = null;
 
     function openDeleteOfficerModal(officer) {
+      if (state.currentRole !== 'ADMINISTRADOR') {
+        showAlert("El borrado de registros está reservado exclusivamente para el Administrador.");
+        openAdminAuthModal();
+        return;
+      }
       officerToDelete = officer || state.adminOfficer;
       if (!officerToDelete) return;
 
@@ -3017,9 +3185,12 @@
     /**
      * Iniciar edición de un oficial específico
      */
-    let editingOfficer = null;
-
     function startEditingOfficer(officer) {
+      if (state.currentRole !== 'ADMINISTRADOR') {
+        showAlert("La modificación de registros está reservada exclusivamente para el Administrador.");
+        openAdminAuthModal();
+        return;
+      }
       if (!officer) return;
       editingOfficer = officer;
       state.isEditing = true;
@@ -3094,17 +3265,29 @@
       if (state.registeredOfficers.length > 0 || state.adminOfficer) {
         alreadyRegisteredBanner.style.display = "flex";
         const adminName = state.adminOfficer ? `${state.adminOfficer.rank} ${state.adminOfficer.fullName}` : 'Designado';
-        alreadyRegisteredText.innerHTML = `Sistema en línea: <strong>${state.registeredOfficers.length} oficial(es) registrado(s)</strong> en tiempo real. Administrador actual: <strong>${adminName}</strong>. Puede registrar más oficiales o ingresar al Panel de Despliegue.`;
-        registeredActionsBar.style.display = "flex";
+        if (state.currentRole === 'ADMINISTRADOR') {
+          alreadyRegisteredText.innerHTML = `Sistema en línea: <strong>${state.registeredOfficers.length} oficial(es) registrado(s)</strong> en tiempo real. Administrador activo: <strong>${adminName}</strong>. Dispone de control total para modificar cupos y registros.`;
+          registeredActionsBar.style.display = "flex";
+        } else {
+          alreadyRegisteredText.innerHTML = `Personal registrado en el sistema: <strong>${state.registeredOfficers.length} oficial(es)</strong>. Complete el formulario abajo para registrarse y asignarse a una comisión disponible.`;
+          registeredActionsBar.style.display = "none";
+        }
       } else {
         alreadyRegisteredBanner.style.display = "none";
         registeredActionsBar.style.display = "none";
       }
 
-      formHeaderTitle.textContent = "Registro de Personal Militar";
-      formHeaderBadge.textContent = "Sincronizado en Tiempo Real";
-      formHeaderBadge.style.background = "var(--accent-gold-soft)";
-      formHeaderBadge.style.color = "var(--accent-gold)";
+      if (state.currentRole === 'ADMINISTRADOR') {
+        formHeaderTitle.textContent = "Registro y Control de Personal Militar";
+        formHeaderBadge.textContent = "Perfil: Administrador (Control Total)";
+        formHeaderBadge.style.background = "linear-gradient(135deg, rgba(201, 151, 56, 0.25) 0%, rgba(245, 158, 11, 0.25) 100%)";
+        formHeaderBadge.style.color = "var(--accent-gold)";
+      } else {
+        formHeaderTitle.textContent = "Registro de Personal Militar y Asignación";
+        formHeaderBadge.textContent = "Perfil: Usuario (Registro)";
+        formHeaderBadge.style.background = "rgba(59, 130, 246, 0.2)";
+        formHeaderBadge.style.color = "#93c5fd";
+      }
     }
 
     /**
@@ -3131,7 +3314,7 @@
         recentTimeText.textContent = `Asignado: ${currentAdmin.timestamp || 'Hoy'} (${currentAdmin.deviceType || 'Dispositivo'})`;
       }
 
-      renderDeploymentPanel();
+      applyRoleView();
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
@@ -3153,6 +3336,7 @@
         resetFormToInitial();
       }
 
+      applyRoleView();
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
@@ -3345,10 +3529,157 @@
 
     btnBannerDelete.addEventListener("click", openDeleteAdminModal);
 
-    // Botón Cerrar Sesión en el Panel de Despliegue: Retorna al Módulo 1: Registro
+    /**
+     * Aplica el control de acceso visual basado en el rol actual (ADMINISTRADOR vs USUARIO)
+     * Regla estricta: Solo el Administrador ve todos los botones a los que tiene acceso.
+     * Los usuarios solamente ven los botones necesarios para su registro y asignación.
+     */
+    function applyRoleView() {
+      const isAdm = state.currentRole === 'ADMINISTRADOR';
+
+      if (isAdm) {
+        document.body.classList.remove('role-usuario');
+        document.body.classList.add('role-admin');
+
+        if (btnRoleSwitcher) {
+          btnRoleSwitcher.className = "role-badge-btn admin-mode";
+          btnRoleSwitcher.innerHTML = `<span id="roleIcon">👑</span><span id="roleLabel">Perfil: Administrador</span><span class="role-switch-chevron">▾</span>`;
+          btnRoleSwitcher.title = "Perfil Administrador Activo (Haga clic para cambiar a Perfil Usuario)";
+        }
+
+        if (formHeaderBadge) {
+          formHeaderBadge.textContent = "Perfil: Administrador (Control Total)";
+          formHeaderBadge.style.background = "linear-gradient(135deg, rgba(201, 151, 56, 0.25) 0%, rgba(245, 158, 11, 0.25) 100%)";
+          formHeaderBadge.style.color = "var(--accent-gold)";
+        }
+
+        if (deploymentRoleBadge) {
+          deploymentRoleBadge.innerHTML = "👑 Administrador Activo";
+        }
+
+        if (deploymentCardTitle) {
+          deploymentCardTitle.textContent = "Módulo 2 - Panel de Despliegue (Control Administrador)";
+        }
+      } else {
+        document.body.classList.remove('role-admin');
+        document.body.classList.add('role-usuario');
+
+        if (btnRoleSwitcher) {
+          btnRoleSwitcher.className = "role-badge-btn user-mode";
+          btnRoleSwitcher.innerHTML = `<span id="roleIcon">👤</span><span id="roleLabel">Perfil: Usuario</span><span class="role-switch-chevron">▾</span>`;
+          btnRoleSwitcher.title = "Perfil Usuario (Haga clic para autenticarse como Administrador)";
+        }
+
+        if (formHeaderBadge) {
+          formHeaderBadge.textContent = "Perfil: Usuario (Registro y Asignación)";
+          formHeaderBadge.style.background = "rgba(59, 130, 246, 0.2)";
+          formHeaderBadge.style.color = "#93c5fd";
+        }
+
+        if (deploymentRoleBadge) {
+          deploymentRoleBadge.innerHTML = "👤 Perfil: Usuario";
+        }
+
+        if (deploymentCardTitle) {
+          deploymentCardTitle.textContent = "Módulo 2 - Panel de Despliegue de Comisiones";
+        }
+      }
+
+      renderDeploymentPanel();
+    }
+
+    function openAdminAuthModal() {
+      if (adminAuthPasswordInput) adminAuthPasswordInput.value = "";
+      if (adminAuthError) {
+        adminAuthError.style.display = "none";
+        adminAuthError.textContent = "";
+      }
+      if (adminAuthModal) adminAuthModal.classList.remove("hidden");
+      setTimeout(() => {
+        if (adminAuthPasswordInput) adminAuthPasswordInput.focus();
+      }, 150);
+    }
+
+    function closeAdminAuthModal() {
+      if (adminAuthModal) adminAuthModal.classList.add("hidden");
+      if (adminAuthPasswordInput) adminAuthPasswordInput.value = "";
+      if (adminAuthError) adminAuthError.style.display = "none";
+    }
+
+    function verifyAndUnlockAdmin() {
+      const enteredPass = adminAuthPasswordInput ? adminAuthPasswordInput.value.trim() : "";
+      const validPins = ["admin123", "admin", "1234", "militar", "MILITAR"];
+
+      if (validPins.includes(enteredPass) || validPins.includes(enteredPass.toLowerCase())) {
+        state.currentRole = 'ADMINISTRADOR';
+        localStorage.setItem('militar_current_role', 'ADMINISTRADOR');
+        closeAdminAuthModal();
+        applyRoleView();
+        showRealtimeNotification("Perfil Administrador activado: Todos los botones habilitados.");
+        showAlert("Perfil Administrador activado: Todos los botones y controles habilitados.", "success");
+      } else {
+        if (adminAuthError) {
+          adminAuthError.textContent = "Clave incorrecta. Clave táctica predeterminada: admin123";
+          adminAuthError.style.display = "block";
+        }
+        if (adminAuthPasswordInput) adminAuthPasswordInput.focus();
+      }
+    }
+
+    function openSwitchToUserModal() {
+      if (switchToUserModal) switchToUserModal.classList.remove("hidden");
+    }
+
+    function closeSwitchToUserModal() {
+      if (switchToUserModal) switchToUserModal.classList.add("hidden");
+    }
+
+    function confirmSwitchToUser() {
+      state.currentRole = 'USUARIO';
+      localStorage.setItem('militar_current_role', 'USUARIO');
+      closeSwitchToUserModal();
+      applyRoleView();
+      showRealtimeNotification("Modo Usuario activado: Vista limitada a registro.");
+      showAlert("Modo Usuario activado: Solo se muestran los botones de registro y asignación.", "success");
+    }
+
+    // Eventos del botón selector de roles en la cabecera
+    if (btnRoleSwitcher) {
+      btnRoleSwitcher.addEventListener("click", () => {
+        if (state.currentRole === 'ADMINISTRADOR') {
+          openSwitchToUserModal();
+        } else {
+          openAdminAuthModal();
+        }
+      });
+    }
+
+    // Eventos del modal de autenticación de Administrador
+    if (btnAdminAuthConfirm) btnAdminAuthConfirm.addEventListener("click", verifyAndUnlockAdmin);
+    if (btnAdminAuthCancel) btnAdminAuthCancel.addEventListener("click", closeAdminAuthModal);
+    if (btnAdminAuthClose) btnAdminAuthClose.addEventListener("click", closeAdminAuthModal);
+
+    if (adminAuthPasswordInput) {
+      adminAuthPasswordInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          verifyAndUnlockAdmin();
+        }
+      });
+    }
+
+    // Eventos del modal de cambio a Perfil Usuario
+    if (btnSwitchUserConfirm) btnSwitchUserConfirm.addEventListener("click", confirmSwitchToUser);
+    if (btnSwitchUserCancel) btnSwitchUserCancel.addEventListener("click", closeSwitchToUserModal);
+    if (btnSwitchUserClose) btnSwitchUserClose.addEventListener("click", closeSwitchToUserModal);
+
+    // Botón Salir de Modo Admin / Retornar al Módulo 1 en modo usuario
     btnLogout.addEventListener("click", function () {
+      state.currentRole = 'USUARIO';
+      localStorage.setItem('militar_current_role', 'USUARIO');
+      applyRoleView();
       showModuleRegistration();
-      showAlert("Retornado al Módulo 1: Registro.", "success");
+      showAlert("Modo Administrador finalizado. Perfil Usuario activo.", "success");
     });
 
     /**
@@ -4032,8 +4363,13 @@
         });
       }
 
-      // 14. Abrir y Cerrar Modal de Personalización
+      // 14. Abrir y Cerrar Modal de Personalización (Exclusivo Administrador)
       function openThemeModal(tab = "escudo") {
+        if (state.currentRole !== 'ADMINISTRADOR') {
+          showAlert("La personalización de escudo y fondos está reservada exclusivamente para el Administrador.");
+          openAdminAuthModal();
+          return;
+        }
         if (themeCustomizerModal) {
           if (tab === "fondo" && tabBtnFondo) {
             tabBtnFondo.click();
@@ -4105,7 +4441,8 @@
           console.warn("Consulta inicial de estado REST:", err);
         });
 
-      // 4. Asegurar actualización inicial de la interfaz
+      // 4. Asegurar aplicación de perfil de acceso (Administrador vs Usuario) y actualización de interfaz
+      applyRoleView();
       renderCommissionDropdown();
       renderDeploymentPanel();
     });
