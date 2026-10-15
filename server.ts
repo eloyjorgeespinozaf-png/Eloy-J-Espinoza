@@ -5,6 +5,14 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 
+// Guardias de Proceso 24/7: Evitan caídas inesperadas del proceso Node.js ante errores de red
+process.on('uncaughtException', (err) => {
+  console.error('[Guardia 24/7] Excepción no capturada interceptada con éxito:', err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[Guardia 24/7] Rechazo asíncrono no controlado interceptado con éxito:', reason);
+});
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -123,6 +131,35 @@ function loadServerState() {
 }
 
 loadServerState();
+
+// Persistencia en disco del Escudo, Fondos y Configuración Visual
+const THEME_FILE = path.join(DATA_DIR, 'militar_theme.json');
+let serverTheme: any = null;
+
+function saveServerTheme(themeData: any) {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    fs.writeFileSync(THEME_FILE, JSON.stringify(themeData, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Error guardando configuración de tema en disco:', err);
+  }
+}
+
+function loadServerTheme() {
+  try {
+    if (fs.existsSync(THEME_FILE)) {
+      const raw = fs.readFileSync(THEME_FILE, 'utf-8');
+      serverTheme = JSON.parse(raw);
+      console.log('Tema y personalización visual recuperados del servidor con éxito.');
+    }
+  } catch (err) {
+    console.error('Error cargando tema desde disco:', err);
+  }
+}
+
+loadServerTheme();
 
 // Control de clientes WebSocket y detección de dispositivos (Móvil vs PC)
 interface ClientInfo {
@@ -487,6 +524,14 @@ wss.on('connection', (ws, req) => {
     try {
       const msg = JSON.parse(raw.toString());
 
+      // Latido / Keepalive 24/7 de WebSocket
+      if (msg.type === 'ping') {
+        const client = clientsMap.get(ws);
+        if (client) client.isAlive = true;
+        ws.send(JSON.stringify({ event: 'pong', uptime: Math.floor(process.uptime()), timestamp: Date.now() }));
+        return;
+      }
+
       // Mensaje de saludo/handshake con tipo de dispositivo reportado por el cliente
       if (msg.type === 'hello') {
         const client = clientsMap.get(ws);
@@ -576,6 +621,43 @@ app.post('/api/window_quota', (req, res) => {
   }
 });
 
+// Endpoint de Monitoreo y Disponibilidad Continua 24/7
+app.get('/api/health', (req, res) => {
+  const presence = getPresenceStats();
+  res.json({
+    status: 'ONLINE_24_7',
+    service: 'Military Registration Authority',
+    uptimeSeconds: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
+    totalOfficers: state.registeredOfficers.length,
+    activeConnections: presence.onlineCount,
+    deviceBreakdown: { mobile: presence.mobileCount, pc: presence.pcCount },
+    quotas: state.quotas,
+    memoryMB: Math.round(process.memoryUsage().rss / (1024 * 1024))
+  });
+});
+
+app.get('/api/ping', (req, res) => {
+  res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.send('PONG_24_7_READY');
+});
+
+// Endpoints de persistencia de Tema (Escudo, Fondos y Contraste)
+app.get('/api/theme', (req, res) => {
+  res.json(serverTheme || {});
+});
+
+app.post('/api/theme', (req, res) => {
+  if (req.body && typeof req.body === 'object') {
+    serverTheme = req.body;
+    saveServerTheme(req.body);
+    broadcast('theme:updated', serverTheme);
+    res.json({ success: true, theme: serverTheme });
+  } else {
+    res.status(400).json({ success: false, message: 'Configuración de tema inválida.' });
+  }
+});
+
 const PORT = Number(process.env.PORT) || 3000;
 
 async function startServer() {
@@ -608,7 +690,21 @@ async function startServer() {
   }
 
   server.listen(PORT, '0.0.0.0', () => {
-    console.log(`Servidor Militar Sincronizado en tiempo real activo en puerto ${PORT}`);
+    console.log(`[Sistema Militar 24/7] Servidor activo en puerto ${PORT} — Monitoreo continuo habilitado.`);
+
+    // Bucle Keep-Alive 24/7 Anti-Idle: Pings internos periódicos cada 3 minutos
+    setInterval(() => {
+      try {
+        http.get(`http://127.0.0.1:${PORT}/api/health`, (res) => {
+          res.resume();
+        }).on('error', () => {});
+      } catch (e) {}
+    }, 3 * 60 * 1000);
+
+    // Auto-backup de seguridad en disco cada 5 minutos
+    setInterval(() => {
+      saveServerState();
+    }, 5 * 60 * 1000);
   });
 }
 

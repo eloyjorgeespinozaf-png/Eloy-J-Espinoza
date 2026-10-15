@@ -2410,9 +2410,10 @@
     const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (window.innerWidth <= 768 && ('ontouchstart' in window || navigator.maxTouchPoints > 0));
     const clientDeviceType = isMobileDevice ? 'Móvil' : 'PC';
 
-    // Conexión WebSocket en tiempo real con soporte multi-dispositivo
+    // Conexión WebSocket en tiempo real con guardia y disponibilidad 24/7
     let socket = null;
     let reconnectTimer = null;
+    let keepaliveInterval = null;
 
     function initWebSocket() {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -2426,49 +2427,91 @@
         socket = new WebSocket(wsUrl);
 
         socket.onopen = function () {
-          console.log(`WebSocket Militar Conectado (${clientDeviceType})`);
+          console.log(`[Centro de Mando 24/7] Conectado en tiempo real (${clientDeviceType})`);
           if (reconnectTimer) clearTimeout(reconnectTimer);
-          // Enviar saludo con tipo de dispositivo
+
+          // Saludo con tipo de dispositivo reportado
           try {
             socket.send(JSON.stringify({ type: 'hello', deviceType: clientDeviceType }));
           } catch (e) {}
+
+          // Latido continuo cada 20 segundos para mantener la conexión despierta 24 horas continuas
+          if (keepaliveInterval) clearInterval(keepaliveInterval);
+          keepaliveInterval = setInterval(() => {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+              try {
+                socket.send(JSON.stringify({ type: 'ping' }));
+              } catch (err) {}
+            }
+          }, 20000);
         };
 
         socket.onmessage = function (event) {
           try {
             const data = JSON.parse(event.data);
+            if (data.event === 'pong') {
+              // Servidor respondiendo normalmente 24/7
+              return;
+            }
+            if (data.event === 'theme:updated' && data.payload) {
+              if (typeof applyTheme === 'function') {
+                themeConfig = Object.assign(themeConfig, data.payload);
+                applyTheme(themeConfig, false);
+              }
+              return;
+            }
             handleRealTimeEvent(data.event, data.payload);
           } catch (err) {
-            console.error("Error al procesar WebSocket:", err);
+            console.error("Error al procesar mensaje WebSocket:", err);
           }
         };
 
         socket.onclose = function () {
-          reconnectTimer = setTimeout(initWebSocket, 2500);
+          if (keepaliveInterval) clearInterval(keepaliveInterval);
+          // Reconexión automática instantánea ante suspensión o cambio de red móvil
+          reconnectTimer = setTimeout(initWebSocket, 2000);
         };
 
         socket.onerror = function () {
           if (socket) socket.close();
         };
       } catch (e) {
-        console.warn("WebSocket no disponible, operando con sincronización local y REST.");
+        console.warn("WebSocket en contingencia: operando con sincronización REST 24/7.");
+        reconnectTimer = setTimeout(initWebSocket, 3500);
       }
     }
 
-    // Reconexión y refresco instantáneo al encender pantalla móvil o cambiar de pestaña
+    // Sincronización continua 24/7 al reactivar pantalla móvil, reconectar Wi-Fi o enfocar la pestaña
+    function trigger24HourResync() {
+      if (!socket || socket.readyState !== WebSocket.OPEN) {
+        initWebSocket();
+      }
+      fetch('/api/state')
+        .then(res => res.json())
+        .then(data => {
+          if (data) handleRealTimeEvent('sync:state', data);
+        })
+        .catch(() => {});
+
+      fetch('/api/theme')
+        .then(res => res.json())
+        .then(theme => {
+          if (theme && Object.keys(theme).length > 0 && typeof applyTheme === 'function') {
+            themeConfig = Object.assign(themeConfig, theme);
+            applyTheme(themeConfig, false);
+          }
+        })
+        .catch(() => {});
+    }
+
     document.addEventListener("visibilitychange", function () {
       if (document.visibilityState === "visible") {
-        if (!socket || socket.readyState !== WebSocket.OPEN) {
-          initWebSocket();
-        }
-        fetch('/api/state')
-          .then(res => res.json())
-          .then(data => {
-            if (data) handleRealTimeEvent('sync:state', data);
-          })
-          .catch(() => {});
+        trigger24HourResync();
       }
     });
+
+    window.addEventListener("online", trigger24HourResync);
+    window.addEventListener("focus", trigger24HourResync);
 
     /**
      * Muestra notificación flotante de sincronización en tiempo real
@@ -2489,7 +2532,7 @@
     }
 
     /**
-     * Actualiza el badge de usuarios en línea en tiempo real
+     * Actualiza el badge de usuarios en línea en tiempo real con indicador de servicio 24/7
      */
     function updatePresenceDisplay(count, mobileCount, pcCount) {
       const total = typeof count === 'number' ? Math.max(1, count) : 1;
@@ -2503,11 +2546,11 @@
       }
 
       if (onlineUsersCount) {
-        onlineUsersCount.innerHTML = `<span>${total} ${total === 1 ? 'en línea' : 'en línea'}</span>${breakdown}`;
+        onlineUsersCount.innerHTML = `<span>${total} en línea · 🟢 24/7 Activo</span>${breakdown}`;
       }
 
       if (rptOnlineUsers) {
-        rptOnlineUsers.textContent = `${total} conectados (${mobileCount || 0} Móvil / ${pcCount || 0} PC)`;
+        rptOnlineUsers.textContent = `${total} conectados (${mobileCount || 0} Móvil / ${pcCount || 0} PC) — Sistema 24/7 Activo`;
       }
     }
 
@@ -4090,18 +4133,23 @@
         el.classList.toggle("active", el.dataset.color === bgColor);
       });
 
-      // 6. Persistir en localStorage
+      // 6. Persistir en localStorage y sincronizar 24/7 con el servidor
       if (persist) {
         try {
           localStorage.setItem(STORAGE_KEY_THEME, JSON.stringify(themeConfig));
         } catch (e) {
           console.warn("No se pudo guardar tema en localStorage", e);
         }
+        fetch('/api/theme', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(themeConfig)
+        }).catch(() => {});
       }
     }
 
     /**
-     * Cargar tema guardado desde localStorage
+     * Cargar tema guardado desde localStorage y sincronizar con servidor 24/7
      */
     function loadSavedTheme() {
       try {
@@ -4109,12 +4157,22 @@
         if (saved) {
           const parsed = JSON.parse(saved);
           applyTheme(Object.assign({}, defaultThemeConfig, parsed), false);
-          return;
+        } else {
+          applyTheme(defaultThemeConfig, false);
         }
       } catch (e) {
-        console.error(e);
+        applyTheme(defaultThemeConfig, false);
       }
-      applyTheme(defaultThemeConfig, false);
+
+      // Sincronización continua de tema con el servidor
+      fetch('/api/theme')
+        .then(res => res.json())
+        .then(theme => {
+          if (theme && Object.keys(theme).length > 0) {
+            applyTheme(Object.assign({}, defaultThemeConfig, theme), false);
+          }
+        })
+        .catch(() => {});
     }
 
     /**
