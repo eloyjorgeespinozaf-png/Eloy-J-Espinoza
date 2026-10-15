@@ -1,0 +1,3961 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Registro de Personal Militar - Control de Administrador</title>
+  <meta name="description" content="Sistema táctico de registro y asignación de Oficiales Superiores con control total de Administrador de la App en tiempo real." />
+  <meta property="og:title" content="Registro Militar - Administrador de la App" />
+  <meta property="og:description" content="Sistema táctico de registro y asignación de Oficiales Superiores con control total de Administrador de la App en tiempo real." />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <style>
+    :root {
+      --bg-main: #0a0f16;
+      --bg-card: #131c26;
+      --bg-card-alt: #1a2736;
+      --border-color: #27374a;
+      --border-focus: #4b6b8b;
+      --primary: #2d6a4f;
+      --primary-hover: #1b4332;
+      --accent-gold: #c99738;
+      --accent-gold-soft: rgba(201, 151, 56, 0.15);
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --success: #10b981;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      line-height: 1.5;
+      padding: 1.5rem;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      transition: max-width 0.3s ease;
+    }
+
+    .container.compact {
+      max-width: 650px;
+    }
+
+    /* Encabezado Táctico */
+    header {
+      background: linear-gradient(135deg, #131c26 0%, #1e2d3d 100%);
+      border: 1px solid var(--border-color);
+      border-left: 6px solid var(--accent-gold);
+      border-radius: 8px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .header-title h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .header-title p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+    }
+
+    .header-badges-row {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+
+    /* Indicador de Usuarios en Línea en Tiempo Real */
+    .presence-badge {
+      background-color: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.45);
+      color: #34d399;
+      padding: 0.35rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      white-space: nowrap;
+    }
+
+    .presence-pulse {
+      width: 8px;
+      height: 8px;
+      background-color: #10b981;
+      border-radius: 50%;
+      box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+      animation: pulse 1.8s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+
+    .header-badge {
+      background-color: var(--accent-gold-soft);
+      border: 1px solid var(--accent-gold);
+      color: var(--accent-gold);
+      padding: 0.35rem 0.75rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .admin-role-badge {
+      background: linear-gradient(135deg, rgba(201, 151, 56, 0.25) 0%, rgba(245, 158, 11, 0.25) 100%);
+      border: 1px solid var(--accent-gold);
+      color: #fde68a;
+      padding: 0.35rem 0.75rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      white-space: nowrap;
+    }
+
+    /* Tarjetas principales */
+    .card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+      animation: fadeIn 0.25s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .card-header {
+      background-color: var(--bg-card-alt);
+      border-bottom: 1px solid var(--border-color);
+      padding: 1rem 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .card-header h2 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #f8fafc;
+      letter-spacing: 0.03em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .step-pill {
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: rgba(45, 106, 79, 0.3);
+      border: 1px solid var(--primary);
+      color: #a7f3d0;
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+    }
+
+    .card-body {
+      padding: 1.5rem;
+    }
+
+    /* Formulario */
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+
+    .form-group:last-of-type {
+      margin-bottom: 1.5rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.825rem;
+      font-weight: 600;
+      color: #cbd5e1;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.4rem;
+    }
+
+    .required-tag {
+      color: var(--danger);
+      margin-left: 2px;
+    }
+
+    input[type="text"],
+    select {
+      width: 100%;
+      padding: 0.75rem 0.9rem;
+      background-color: #0b1016;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: #f8fafc;
+      font-size: 0.925rem;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      outline: none;
+    }
+
+    input[type="text"]:focus,
+    select:focus {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(75, 107, 139, 0.25);
+    }
+
+    select option {
+      background-color: #151e28;
+      color: #f8fafc;
+      padding: 8px;
+    }
+
+    select option:disabled {
+      color: #64748b;
+      background-color: #0f1722;
+      font-style: italic;
+    }
+
+    .help-text {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.35rem;
+    }
+
+    /* Botones */
+    .btn-submit {
+      width: 100%;
+      padding: 0.9rem 1rem;
+      background-color: var(--primary);
+      color: #ffffff;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background-color 0.15s ease, transform 0.05s ease;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-submit:hover {
+      background-color: #245840;
+    }
+
+    .btn-submit:active {
+      transform: scale(0.99);
+    }
+
+    .btn-secondary {
+      padding: 0.65rem 1rem;
+      background-color: transparent;
+      color: #cbd5e1;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-secondary:hover {
+      background-color: #1a2736;
+      border-color: var(--border-focus);
+      color: #ffffff;
+    }
+
+    .btn-edit {
+      padding: 0.55rem 0.9rem;
+      background-color: rgba(30, 58, 138, 0.4);
+      color: #93c5fd;
+      border: 1px solid #3b82f6;
+      border-radius: 6px;
+      font-size: 0.825rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.15s ease;
+    }
+
+    .btn-edit:hover {
+      background-color: #1d4ed8;
+      color: #ffffff;
+    }
+
+    .btn-delete {
+      padding: 0.55rem 0.9rem;
+      background-color: rgba(239, 68, 68, 0.15);
+      color: #fca5a5;
+      border: 1px solid var(--danger);
+      border-radius: 6px;
+      font-size: 0.825rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.15s ease;
+    }
+
+    .btn-delete:hover {
+      background-color: #dc2626;
+      color: #ffffff;
+    }
+
+    .btn-inline-action {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid #334458;
+      color: #cbd5e1;
+      cursor: pointer;
+      padding: 0.2rem 0.4rem;
+      border-radius: 3px;
+      font-size: 0.75rem;
+      display: inline-flex;
+      align-items: center;
+      transition: all 0.15s ease;
+    }
+
+    .btn-inline-action:hover {
+      background-color: rgba(59, 130, 246, 0.25);
+      border-color: #3b82f6;
+      color: #ffffff;
+    }
+
+    .btn-inline-delete:hover {
+      background-color: rgba(239, 68, 68, 0.25);
+      border-color: var(--danger);
+      color: #fca5a5;
+    }
+
+    /* Mensajes de Alerta */
+    .alert {
+      padding: 0.75rem 1rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      margin-bottom: 1.25rem;
+      display: none;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .alert-danger {
+      background-color: rgba(239, 68, 68, 0.15);
+      border: 1px solid var(--danger);
+      color: #f87171;
+    }
+
+    .alert-success {
+      background-color: rgba(16, 185, 129, 0.15);
+      border: 1px solid var(--success);
+      color: #34d399;
+    }
+
+    /* Banner de Asignación en Módulo 2 */
+    .recent-assignment-banner {
+      background: linear-gradient(135deg, rgba(201, 151, 56, 0.2) 0%, rgba(45, 106, 79, 0.3) 100%);
+      border: 1px solid rgba(201, 151, 56, 0.5);
+      border-radius: 6px;
+      padding: 1.1rem 1.25rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .recent-text {
+      font-size: 0.9rem;
+      color: #fde68a;
+    }
+
+    .recent-text strong {
+      color: #ffffff;
+    }
+
+    /* Cuadrícula de 13 comisiones (Panel de Despliegue) */
+    .deployment-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+      gap: 1.1rem;
+      margin-top: 1rem;
+    }
+
+    .commission-card {
+      background-color: #0c121a;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: border-color 0.2s ease, transform 0.15s ease;
+    }
+
+    .commission-card:hover {
+      border-color: var(--border-focus);
+    }
+
+    .commission-card.highlight {
+      border-color: var(--accent-gold);
+      box-shadow: 0 0 14px rgba(201, 151, 56, 0.3);
+    }
+
+    .commission-card.depleted {
+      border-color: rgba(239, 68, 68, 0.4);
+      background-color: #100f14;
+    }
+
+    .commission-card-header {
+      background-color: #151e2b;
+      padding: 0.75rem 0.9rem;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .commission-title {
+      font-size: 0.825rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      line-height: 1.3;
+    }
+
+    .commission-card-body {
+      padding: 0.85rem;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    /* Indicador muy visible de cupos restantes */
+    .quota-banner {
+      background-color: #101823;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 0.45rem 0.6rem;
+      margin-bottom: 0.75rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+    }
+
+    .quota-label {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .quota-counter {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #34d399;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .quota-counter.zero {
+      color: #f87171;
+    }
+
+    /* Lista de Personal Asignado dentro de cada tarjeta */
+    .assigned-header-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-bottom: 0.4rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .assigned-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      min-height: 60px;
+      max-height: 190px;
+      overflow-y: auto;
+    }
+
+    .assigned-item {
+      background-color: #16202c;
+      border: 1px solid #233346;
+      border-radius: 4px;
+      padding: 0.35rem 0.5rem;
+      font-size: 0.775rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      color: #f8fafc;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .assigned-item .admin-pill {
+      background: linear-gradient(135deg, rgba(201, 151, 56, 0.3) 0%, rgba(245, 158, 11, 0.4) 100%);
+      border: 1px solid var(--accent-gold);
+      color: #fde68a;
+      font-size: 0.65rem;
+      font-weight: 800;
+      padding: 0.1rem 0.35rem;
+      border-radius: 3px;
+      white-space: nowrap;
+    }
+
+    .assigned-item .rank-pill {
+      background-color: #0b1118;
+      border: 1px solid #334458;
+      color: #cbd5e1;
+      font-size: 0.675rem;
+      font-weight: 700;
+      padding: 0.1rem 0.35rem;
+      border-radius: 3px;
+      white-space: nowrap;
+    }
+
+    .assigned-item .officer-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 600;
+      flex: 1;
+    }
+
+    .empty-list-notice {
+      color: #64748b;
+      font-size: 0.75rem;
+      font-style: italic;
+      padding: 0.85rem 0.25rem;
+      text-align: center;
+    }
+
+    /* Monitor compacto de cupos en Módulo 1 */
+    .quota-summary {
+      margin-top: 1.5rem;
+      border-top: 1px solid var(--border-color);
+      padding-top: 1.25rem;
+    }
+
+    .quota-summary-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.75rem;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .quota-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.45rem;
+      max-height: 200px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    @media (max-width: 540px) {
+      .quota-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .quota-item {
+      background-color: #0b1016;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 0.45rem 0.6rem;
+      font-size: 0.75rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .quota-item.depleted {
+      border-color: rgba(239, 68, 68, 0.4);
+      background-color: rgba(239, 68, 68, 0.05);
+    }
+
+    .quota-item-name {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding-right: 4px;
+      color: #cbd5e1;
+    }
+
+    .quota-badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.1rem 0.4rem;
+      border-radius: 3px;
+      background-color: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+      white-space: nowrap;
+    }
+
+    .quota-badge.zero {
+      background-color: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+    }
+
+    /* Ocultar sección cuando no esté activa */
+    .hidden {
+      display: none !important;
+    }
+
+    /* Modales tácticos in-app */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.78);
+      backdrop-filter: blur(4px);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      padding: 1rem;
+    }
+
+    .modal-card {
+      background: #131c26;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      width: 100%;
+      max-width: 440px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.55);
+      animation: fadeIn 0.2s ease-out;
+      overflow: hidden;
+    }
+
+    .modal-card-danger {
+      border-color: rgba(239, 68, 68, 0.5);
+    }
+
+    .modal-header {
+      background: #1a2736;
+      padding: 0.9rem 1.25rem;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-header h3 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .modal-close {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.4rem;
+      line-height: 1;
+      cursor: pointer;
+      padding: 0.2rem;
+    }
+
+    .modal-close:hover {
+      color: #ffffff;
+    }
+
+    .modal-body {
+      padding: 1.25rem;
+    }
+
+    .modal-footer {
+      padding: 0.9rem 1.25rem;
+      background: #0f1620;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.6rem;
+    }
+
+    /* Botón Táctico de Impresión en PDF */
+    .btn-print {
+      padding: 0.35rem 0.75rem;
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(5, 150, 105, 0.35) 100%);
+      color: #6ee7b7;
+      border: 1px solid #10b981;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: all 0.15s ease;
+    }
+
+    .btn-print:hover {
+      background: #059669;
+      color: #ffffff;
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.45);
+    }
+
+    /* Modal de Impresión y Previa Grande */
+    .modal-card-large {
+      max-width: 920px;
+      max-height: 92vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal-body-scrollable {
+      overflow-y: auto;
+      max-height: calc(92vh - 130px);
+      background-color: #0d141e;
+      padding: 1rem;
+    }
+
+    /* Reporte Detallado Oficial */
+    .military-official-report {
+      background: #ffffff;
+      color: #0f172a;
+      padding: 1.75rem;
+      border-radius: 6px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+    }
+
+    .report-header-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2px solid #0f172a;
+      padding-bottom: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .report-header-title {
+      text-align: center;
+      flex: 1;
+    }
+
+    .report-header-title h4 {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #334155;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin: 0 0 0.2rem 0;
+    }
+
+    .report-header-title h2 {
+      font-size: 1.15rem;
+      font-weight: 900;
+      color: #0f172a;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin: 0;
+    }
+
+    .report-header-title p {
+      font-size: 0.75rem;
+      color: #64748b;
+      margin: 0.25rem 0 0 0;
+      font-weight: 600;
+    }
+
+    .report-meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 0.6rem;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1.25rem;
+      font-size: 0.8rem;
+    }
+
+    .report-meta-item strong {
+      display: block;
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #64748b;
+      margin-bottom: 0.15rem;
+    }
+
+    .report-meta-item span {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .report-kpi-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.6rem;
+      margin-bottom: 1.25rem;
+    }
+
+    @media (max-width: 640px) {
+      .report-kpi-row {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .report-kpi-box {
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 0.6rem;
+      text-align: center;
+      background: #f1f5f9;
+    }
+
+    .report-kpi-box .kpi-num {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.1;
+    }
+
+    .report-kpi-box .kpi-lbl {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #475569;
+      margin-top: 0.2rem;
+    }
+
+    .report-table-title {
+      font-size: 0.85rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #0f172a;
+      margin-bottom: 0.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .report-data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.775rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .report-data-table th {
+      background-color: #0f172a;
+      color: #ffffff;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      padding: 0.5rem 0.6rem;
+      text-align: left;
+      font-size: 0.72rem;
+      border: 1px solid #0f172a;
+    }
+
+    .report-data-table td {
+      padding: 0.45rem 0.6rem;
+      border: 1px solid #e2e8f0;
+      color: #1e293b;
+      vertical-align: middle;
+    }
+
+    .report-data-table tr:nth-child(even) td {
+      background-color: #f8fafc;
+    }
+
+    .report-badge-status {
+      display: inline-block;
+      padding: 0.15rem 0.45rem;
+      border-radius: 3px;
+      font-size: 0.675rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .report-badge-active {
+      background-color: #dbeafe;
+      color: #1d4ed8;
+      border: 1px solid #93c5fd;
+    }
+
+    .report-badge-depleted {
+      background-color: #fee2e2;
+      color: #b91c1c;
+      border: 1px solid #fca5a5;
+    }
+
+    .report-badge-free {
+      background-color: #d1fae5;
+      color: #047857;
+      border: 1px solid #6ee7b7;
+    }
+
+    .report-legal-note {
+      font-size: 0.7rem;
+      color: #64748b;
+      line-height: 1.4;
+      background: #f8fafc;
+      border-left: 3px solid #0f172a;
+      padding: 0.5rem 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .report-signatures {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2.5rem;
+      margin-top: 2rem;
+      page-break-inside: avoid;
+    }
+
+    .signature-slot {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .signature-line {
+      width: 80%;
+      border-top: 1px solid #0f172a;
+      margin-bottom: 0.4rem;
+    }
+
+    .signature-slot strong {
+      font-size: 0.775rem;
+      color: #0f172a;
+      text-transform: uppercase;
+      display: block;
+    }
+
+    .signature-slot span {
+      font-size: 0.7rem;
+      color: #64748b;
+    }
+
+    /* =========================================================
+       CAPAS DE FONDO TÁCTICO Y CONTRASTE SUTIL
+       ========================================================= */
+    #appBackgroundLayer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: -1;
+      overflow: hidden;
+      background-color: var(--bg-main, #0a0f16);
+      transition: background-color 0.3s ease;
+    }
+
+    .app-bg-texture {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center;
+      background-repeat: repeat;
+      opacity: var(--app-bg-opacity, 0.18);
+      mix-blend-mode: var(--app-bg-blend, overlay);
+      filter: blur(var(--app-bg-blur, 0px)) contrast(var(--app-bg-contrast, 1.15));
+      transition: opacity 0.3s ease, filter 0.3s ease, background 0.3s ease;
+    }
+
+    .app-bg-vignette {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 25%, transparent 20%, rgba(5, 8, 13, 0.82) 100%);
+      pointer-events: none;
+    }
+
+    /* Tarjetas con contraste táctico reforzado */
+    .card, header {
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.04);
+    }
+
+    /* Botón de Personalización Táctica (Escudo y Fondo) */
+    .btn-customizer-trigger {
+      padding: 0.35rem 0.75rem;
+      background: linear-gradient(135deg, rgba(201, 151, 56, 0.18) 0%, rgba(180, 130, 40, 0.28) 100%);
+      color: #fde68a;
+      border: 1px solid var(--accent-gold);
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: all 0.2s ease;
+    }
+
+    .btn-customizer-trigger:hover {
+      background: var(--accent-gold);
+      color: #0a0f16;
+      box-shadow: 0 0 14px rgba(201, 151, 56, 0.5);
+    }
+
+    /* Contenedores y Estilos del Escudo Institucional */
+    .escudo-container {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      vertical-align: middle;
+      flex-shrink: 0;
+      transition: all 0.25s ease;
+    }
+
+    .escudo-img-wrap {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      overflow: hidden;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1.5px solid var(--escudo-halo-color, var(--accent-gold));
+      box-shadow: 0 0 10px var(--escudo-halo-glow, rgba(201, 151, 56, 0.45));
+      vertical-align: middle;
+      padding: 2px;
+      transition: all 0.25s ease;
+    }
+
+    .escudo-img-wrap img,
+    .escudo-img-wrap svg {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .escudo-header-size {
+      width: 38px;
+      height: 38px;
+    }
+
+    .escudo-card-size {
+      width: 28px;
+      height: 28px;
+    }
+
+    .escudo-report-size {
+      width: 52px;
+      height: 52px;
+      background: #ffffff;
+      border: 2px solid #0f172a;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+      border-radius: 50%;
+      padding: 2px;
+    }
+
+    .escudo-preview-size {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      background: rgba(15, 23, 42, 0.9);
+      border: 2.5px solid var(--escudo-halo-color, var(--accent-gold));
+      box-shadow: 0 0 20px var(--escudo-halo-glow, rgba(201, 151, 56, 0.5));
+      padding: 4px;
+    }
+
+    /* Modal de Personalización */
+    .modal-card-theme {
+      max-width: 820px;
+      width: 95%;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .theme-tabs-nav {
+      display: flex;
+      gap: 0.5rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .theme-tab-btn {
+      flex: 1;
+      padding: 0.6rem 1rem;
+      background: #111a26;
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 0.825rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      transition: all 0.2s ease;
+    }
+
+    .theme-tab-btn:hover {
+      color: #ffffff;
+      border-color: var(--border-focus);
+    }
+
+    .theme-tab-btn.active {
+      background: linear-gradient(135deg, rgba(45, 106, 79, 0.4) 0%, rgba(201, 151, 56, 0.25) 100%);
+      color: #fde68a;
+      border-color: var(--accent-gold);
+      box-shadow: 0 0 10px rgba(201, 151, 56, 0.2);
+    }
+
+    .theme-section-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #fde68a;
+      margin-bottom: 0.6rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    /* Cajas y Zonas de Carga de Imagen */
+    .upload-dropzone {
+      border: 2px dashed var(--border-focus);
+      background: rgba(19, 28, 38, 0.7);
+      border-radius: 8px;
+      padding: 1.25rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .upload-dropzone:hover {
+      border-color: var(--accent-gold);
+      background: rgba(201, 151, 56, 0.08);
+    }
+
+    .upload-dropzone p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 0.35rem;
+    }
+
+    /* Grilla de Presets */
+    .presets-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.75rem;
+      margin-top: 0.5rem;
+    }
+
+    .preset-card {
+      background: #111a24;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 0.75rem 0.5rem;
+      text-align: center;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.2s ease;
+    }
+
+    .preset-card:hover {
+      border-color: var(--border-focus);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .preset-card.active {
+      border-color: var(--accent-gold);
+      background: rgba(201, 151, 56, 0.12);
+      box-shadow: 0 0 12px rgba(201, 151, 56, 0.35);
+    }
+
+    .preset-card-icon {
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .preset-card-title {
+      font-size: 0.725rem;
+      font-weight: 700;
+      color: #e2e8f0;
+      line-height: 1.2;
+    }
+
+    /* Controles de Contraste Sutil */
+    .contrast-controls-card {
+      background: #101721;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-top: 1rem;
+    }
+
+    .control-slider-group {
+      margin-bottom: 0.9rem;
+    }
+
+    .control-slider-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.775rem;
+      font-weight: 600;
+      color: #cbd5e1;
+      margin-bottom: 0.3rem;
+    }
+
+    .control-slider-val {
+      font-family: monospace;
+      color: #fde68a;
+    }
+
+    .custom-range-slider {
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: #27374a;
+      outline: none;
+      -webkit-appearance: none;
+      cursor: pointer;
+    }
+
+    .custom-range-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--accent-gold);
+      cursor: pointer;
+      box-shadow: 0 0 8px rgba(201, 151, 56, 0.6);
+      border: 2px solid #ffffff;
+    }
+
+    /* Paleta Táctica de Fondos */
+    .color-swatches-row {
+      display: flex;
+      gap: 0.6rem;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 0.4rem;
+    }
+
+    .color-swatch-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      border: 2px solid #27374a;
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+
+    .color-swatch-btn:hover {
+      transform: scale(1.1);
+      border-color: #ffffff;
+    }
+
+    .color-swatch-btn.active {
+      border-color: var(--accent-gold);
+      box-shadow: 0 0 10px rgba(201, 151, 56, 0.6);
+    }
+
+    .color-swatch-btn.active::after {
+      content: "✓";
+      color: #ffffff;
+      font-size: 0.8rem;
+      font-weight: bold;
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Halo / Glow selector chips */
+    .halo-selector-row {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-top: 0.4rem;
+    }
+
+    .halo-chip {
+      padding: 0.35rem 0.7rem;
+      font-size: 0.75rem;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      background: #111a26;
+      color: #cbd5e1;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: all 0.2s ease;
+    }
+
+    .halo-chip.active {
+      border-color: var(--accent-gold);
+      background: rgba(201, 151, 56, 0.2);
+      color: #fde68a;
+      box-shadow: 0 0 8px rgba(201, 151, 56, 0.3);
+    }
+
+    /* Reglas específicas de impresión / exportar PDF */
+    @media print {
+      @page {
+        size: letter portrait;
+        margin: 10mm 12mm;
+      }
+
+      html, body {
+        background: #ffffff !important;
+        color: #0f172a !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        font-family: Arial, Helvetica, sans-serif !important;
+      }
+
+      /* Ocultar interfaz de la app y capas de fondo en la impresión */
+      #appBackgroundLayer,
+      #themeCustomizerModal,
+      #mainContainer,
+      .connection-badge,
+      .alert,
+      #editQuotaModal,
+      #deleteConfirmModal,
+      .modal-header,
+      .modal-footer {
+        display: none !important;
+      }
+
+      /* Mostrar únicamente el reporte oficial a toda página */
+      #printReportModal {
+        position: static !important;
+        width: 100% !important;
+        height: auto !important;
+        background: transparent !important;
+        backdrop-filter: none !important;
+        padding: 0 !important;
+        display: block !important;
+      }
+
+      #printReportModal .modal-card {
+        max-width: 100% !important;
+        box-shadow: none !important;
+        border: none !important;
+        background: transparent !important;
+      }
+
+      #printReportModal .modal-body-scrollable {
+        max-height: none !important;
+        overflow: visible !important;
+        padding: 0 !important;
+        background: transparent !important;
+      }
+
+      .military-official-report {
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+      }
+
+      .report-data-table th {
+        background-color: #0f172a !important;
+        color: #ffffff !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
+      .report-badge-status {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
+      .report-kpi-box {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
+      tr {
+        page-break-inside: avoid;
+      }
+
+      .report-signatures {
+        page-break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Capa de Fondo Táctico Dinámico y Contraste Sutil -->
+  <div id="appBackgroundLayer">
+    <div class="app-bg-texture" id="appBgTexture"></div>
+    <div class="app-bg-vignette"></div>
+  </div>
+
+  <div class="container compact" id="mainContainer">
+    <!-- Encabezado Institucional -->
+    <header>
+      <div class="header-title">
+        <h1>
+          <span class="escudo-container escudo-header-size" id="appHeaderEscudo">🛡️</span>
+          <span>Registro de Personal Militar</span>
+        </h1>
+        <p>Sistema Centralizado — Asignación y Control de Administrador</p>
+      </div>
+
+      <div class="header-badges-row">
+        <!-- Indicador de usuarios en línea en tiempo real -->
+        <div class="presence-badge" id="presenceBadge" title="Usuarios conectados actualmente al sistema">
+          <span class="presence-pulse"></span>
+          <span id="onlineUsersCount">1 en línea</span>
+        </div>
+        <div class="header-badge" id="moduleBadge">
+          <span>Módulo 1: Registro</span>
+        </div>
+        <!-- Botón para Personalizar Escudo y Fondo -->
+        <button type="button" class="btn-customizer-trigger" id="btnOpenThemeModal" title="Personalizar Escudo y Fondo de la App">
+          <span>🎨 Escudo y Fondos</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- MÓDULO 1: FORMULARIO DE REGISTRO DE ADMINISTRADOR DE LA APP -->
+    <section class="card" id="moduleRegistrationCard">
+      <div class="card-header">
+        <h2>
+          <span class="escudo-container escudo-card-size" id="module1Escudo">👑</span>
+          <span id="formHeaderTitle">Registro de Oficial Administrador de la App</span>
+        </h2>
+        <span class="admin-role-badge" id="formHeaderBadge">Perfil: Administrador</span>
+      </div>
+      <div class="card-body">
+        <div id="alertFeedback" class="alert alert-danger" role="alert"></div>
+
+        <!-- Notificación y barra de acciones cuando ya está registrado el Administrador -->
+        <div id="alreadyRegisteredBanner" class="alert" style="display: none; background: rgba(201, 151, 56, 0.15); border: 1px solid var(--accent-gold); color: #fde68a; flex-direction: column; align-items: flex-start; gap: 0.5rem;">
+          <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; font-weight: 700; text-transform: uppercase;">
+              <span>👑</span>
+              <span id="registeredBannerTitle">Oficial Administrador Activo (1/1)</span>
+            </div>
+            <span class="step-pill" style="font-size: 0.7rem; background: rgba(201,151,56,0.2); border-color: var(--accent-gold); color: #fde68a;">Control Total</span>
+          </div>
+          <div id="alreadyRegisteredText" style="font-size: 0.85rem; line-height: 1.4;">
+            Usted está registrado como el Administrador de la App. Tiene la facultad exclusiva de modificar todos los campos, comisiones, ventanas o borrar el registro para liberar el sistema.
+          </div>
+          <!-- Acciones de Administrador -->
+          <div id="registeredActionsBar" style="display: flex; gap: 0.5rem; width: 100%; margin-top: 0.35rem; flex-wrap: wrap;">
+            <button type="button" class="btn-edit" id="btnStartEdit">
+              <span>✏️ Modificar Campos</span>
+            </button>
+            <button type="button" class="btn-delete" id="btnDeleteRecord">
+              <span>🗑️ Borrar Registro de Administrador</span>
+            </button>
+          </div>
+        </div>
+
+        <form id="militaryRegistrationForm" novalidate>
+          <!-- Campo Grado Militar -->
+          <div class="form-group">
+            <label for="rankSelect">
+              Grado Militar <span class="required-tag">*</span>
+            </label>
+            <select id="rankSelect" required>
+              <option value="" disabled selected>-- Seleccione el Grado Militar --</option>
+              <option value="MY. INF.">MY. INF.</option>
+              <option value="MY. CAB.">MY. CAB.</option>
+              <option value="MY. ART.">MY. ART.</option>
+              <option value="MY. ING.">MY. ING.</option>
+              <option value="MY. COM.">MY. COM.</option>
+              <option value="MY. LOG.">MY. LOG.</option>
+            </select>
+            <div class="help-text">Grado militar del Oficial Administrador.</div>
+          </div>
+
+          <!-- Campo Nombre Completo (Solo letras mayúsculas) -->
+          <div class="form-group">
+            <label for="fullNameInput">
+              Nombre Completo <span class="required-tag">*</span>
+            </label>
+            <input
+              type="text"
+              id="fullNameInput"
+              placeholder="EJ. JUAN CARLOS MORALES PÉREZ"
+              autocomplete="off"
+              style="text-transform: uppercase;"
+              required
+            />
+            <div class="help-text">Solo en letras mayúsculas (nombres y apellidos completos).</div>
+          </div>
+
+          <!-- Campo Comisión con Control de Cupos -->
+          <div class="form-group">
+            <label for="commissionSelect">
+              Comisión Asignada al Administrador <span class="required-tag">*</span>
+            </label>
+            <select id="commissionSelect" required>
+              <option value="" disabled selected>-- Seleccione una comisión --</option>
+            </select>
+            <div class="help-text">Comisión en la cual quedará asignado el Oficial Administrador.</div>
+          </div>
+
+          <!-- Botón de Envío y Cancelar edición -->
+          <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+            <button type="submit" class="btn-submit" id="submitBtn" style="flex: 1;">
+              <span>Registrar y Asignar</span>
+            </button>
+            <button type="button" class="btn-secondary" id="btnCancelEdit" style="display: none;">Cancelar</button>
+          </div>
+        </form>
+
+        <button type="button" class="btn-secondary" id="btnReturnToDeployment" style="width: 100%; margin-top: 0.85rem; display: none;">
+          <span>➔ Volver al Panel de Despliegue</span>
+        </button>
+
+        <!-- Monitor táctico de cupos -->
+        <div class="quota-summary">
+          <div class="quota-summary-title">
+            <span>Disponibilidad de Cupos por Comisión</span>
+            <span id="totalRemainingIndicator">-- cupos restantes</span>
+          </div>
+          <div class="quota-grid" id="quotaMonitorList"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MÓDULO 2: PANEL DE DESPLIEGUE (Control de Administrador) -->
+    <section class="card hidden" id="moduleDeploymentCard">
+      <div class="card-header">
+        <h2>
+          <span class="escudo-container escudo-card-size" id="module2Escudo">🎖️</span>
+          <span>Módulo 2 - Panel de Despliegue (Control Administrador)</span>
+        </h2>
+        <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+          <span class="admin-role-badge">
+            👑 Administrador Registrado (1/1)
+          </span>
+          <button type="button" class="btn-customizer-trigger" id="btnOpenThemeModalDeployment" style="padding: 0.35rem 0.75rem; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 0.35rem;" title="Personalizar Escudo y Fondo">
+            <span>🎨 Escudo y Fondos</span>
+          </button>
+          <button type="button" class="btn-print" id="btnPrintDeploymentPdf" style="padding: 0.35rem 0.75rem; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 0.35rem;">
+            <span>🖨️ Imprimir en PDF</span>
+          </button>
+          <button type="button" class="btn-secondary" id="btnBackToRegister" style="padding: 0.3rem 0.65rem; font-size: 0.75rem;">
+            <span>👁️ Ver / Modificar Mi Registro</span>
+          </button>
+          <button type="button" class="btn-delete" id="btnLogout" style="padding: 0.35rem 0.75rem; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 0.35rem;">
+            <span>🚪 Cerrar Sesión</span>
+          </button>
+        </div>
+      </div>
+      <div class="card-body">
+        <!-- Banner informativo del Administrador con controles de Modificar y Borrar -->
+        <div class="recent-assignment-banner" id="recentBanner" style="display: none;">
+          <div style="display: flex; flex-direction: column; gap: 0.2rem;">
+            <div class="recent-text">
+              <span>👑 Oficial Administrador: </span>
+              <strong id="recentOfficerText">--</strong>
+            </div>
+            <span style="font-size: 0.75rem; color: #fde68a;" id="recentTimeText">--:--:--</span>
+          </div>
+          <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+            <button type="button" class="btn-print" id="btnBannerPrintPdf" style="font-size: 0.75rem; padding: 0.4rem 0.75rem;">
+              <span>🖨️ Imprimir en PDF</span>
+            </button>
+            <button type="button" class="btn-edit" id="btnBannerEdit" style="font-size: 0.75rem; padding: 0.4rem 0.75rem;">
+              <span>✏️ Modificar Registro</span>
+            </button>
+            <button type="button" class="btn-delete" id="btnBannerDelete" style="font-size: 0.75rem; padding: 0.4rem 0.75rem;">
+              <span>🗑️ Borrar Registro</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Cuadrícula con las 13 tarjetas de comisiones (ventanas editables) -->
+        <div class="deployment-grid" id="deploymentGrid">
+          <!-- Inyectadas dinámicamente con controles de administrador -->
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Modal para Modificar Cupo de Comisión / Ventana -->
+  <div class="modal-overlay hidden" id="editQuotaModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modalQuotaTitle">Modificar Cupo de Ventana</h3>
+        <button type="button" class="modal-close" id="btnQuotaModalClose">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.85rem;" id="modalQuotaDesc">
+          Ajuste de cupos restantes para esta comisión.
+        </p>
+        <label for="modalQuotaInput">Cupos Disponibles:</label>
+        <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.4rem;">
+          <button type="button" class="btn-secondary" id="btnQuotaMinus" style="padding: 0.6rem 1rem; font-size: 1.1rem; font-weight: bold;">-</button>
+          <input type="number" id="modalQuotaInput" min="0" max="99" style="text-align: center; font-size: 1.1rem; font-weight: 700; width: 100%;" />
+          <button type="button" class="btn-secondary" id="btnQuotaPlus" style="padding: 0.6rem 1rem; font-size: 1.1rem; font-weight: bold;">+</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" id="btnQuotaModalCancel">Cancelar</button>
+        <button type="button" class="btn-submit" id="btnQuotaModalSave" style="width: auto; padding: 0.65rem 1.25rem;">Guardar Cupo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Confirmación de Borrado de Registro -->
+  <div class="modal-overlay hidden" id="deleteConfirmModal">
+    <div class="modal-card modal-card-danger">
+      <div class="modal-header">
+        <h3 style="color: #f87171;">⚠️ Confirmar Borrado de Registro</h3>
+        <button type="button" class="modal-close" id="btnDeleteModalClose">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.9rem; margin-bottom: 0.85rem; line-height: 1.4;">
+          ¿Está seguro de que desea <strong>borrar completamente</strong> el registro del Oficial Administrador?
+        </p>
+        <div id="deleteModalOfficerInfo" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; padding: 0.75rem; margin-bottom: 0.85rem; font-size: 0.85rem; line-height: 1.5;">
+          <!-- Inyectado dinámicamente -->
+        </div>
+        <p style="font-size: 0.8rem; color: #cbd5e1;">
+          Esta acción liberará el cupo asignado y permitirá que un nuevo usuario se registre en la aplicación.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" id="btnDeleteModalCancel">Cancelar</button>
+        <button type="button" class="btn-delete" id="btnDeleteModalConfirm" style="padding: 0.65rem 1.25rem;">🗑️ Sí, Borrar Registro</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Vista Previa e Impresión en PDF del Panel de Despliegue -->
+  <div class="modal-overlay hidden" id="printReportModal">
+    <div class="modal-card modal-card-large">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span style="font-size: 1.2rem;">🖨️</span>
+          <div>
+            <h3 style="margin: 0; font-size: 0.95rem;">Resumen Detallado y Reporte PDF</h3>
+            <span style="font-size: 0.725rem; color: #94a3b8;">Panel de Despliegue Operativo - Control Administrador</span>
+          </div>
+        </div>
+        <button type="button" class="modal-close" id="btnPrintModalCloseX">&times;</button>
+      </div>
+
+      <div class="modal-body modal-body-scrollable">
+        <!-- Documento Militar Oficial Formateado para Impresión / PDF -->
+        <div class="military-official-report" id="militaryReportContent">
+          <!-- Cabecera Institucional Oficial -->
+          <div class="report-header-banner">
+            <div class="escudo-container escudo-report-size" id="rptEscudoLeft">🛡️</div>
+            <div class="report-header-title">
+              <h4>ESTADO MAYOR GENERAL - DIRECCIÓN DE OPERACIONES</h4>
+              <h2>REPORTE OFICIAL DE DESPLIEGUE Y ASIGNACIÓN DE COMISIONES</h2>
+              <p>SISTEMA INTEGRADO DE CONTROL DE PERSONAL Y CUPOS TÁCTICOS</p>
+            </div>
+            <div class="escudo-container escudo-report-size" id="rptEscudoRight">🎖️</div>
+          </div>
+
+          <!-- Metadatos de Auditoría y Control -->
+          <div class="report-meta-grid">
+            <div class="report-meta-item">
+              <strong>Oficial Administrador:</strong>
+              <span id="rptAdminName">CARGANDO...</span>
+            </div>
+            <div class="report-meta-item">
+              <strong>Grado Militar:</strong>
+              <span id="rptAdminRank">--</span>
+            </div>
+            <div class="report-meta-item">
+              <strong>Comisión Asignada:</strong>
+              <span id="rptAdminCommission">--</span>
+            </div>
+            <div class="report-meta-item">
+              <strong>Fecha y Hora de Emisión:</strong>
+              <span id="rptTimestamp">--</span>
+            </div>
+            <div class="report-meta-item">
+              <strong>Código de Validación:</strong>
+              <span id="rptDocCode">INF-DESPL-2026-001</span>
+            </div>
+            <div class="report-meta-item">
+              <strong>Usuarios en Línea:</strong>
+              <span id="rptOnlineUsers">1 Activo</span>
+            </div>
+          </div>
+
+          <!-- Tablero de Indicadores Clave (Resumen Ejecutivo) -->
+          <div class="report-kpi-row">
+            <div class="report-kpi-box">
+              <div class="kpi-num" id="rptTotalCapacity">94</div>
+              <div class="kpi-lbl">Total Cupos Autorizados</div>
+            </div>
+            <div class="report-kpi-box">
+              <div class="kpi-num" id="rptTotalAssigned" style="color: #0284c7;">1</div>
+              <div class="kpi-lbl">Cupos Asignados / Ocupados</div>
+            </div>
+            <div class="report-kpi-box">
+              <div class="kpi-num" id="rptTotalRemaining" style="color: #059669;">93</div>
+              <div class="kpi-lbl">Cupos Disponibles Libres</div>
+            </div>
+            <div class="report-kpi-box">
+              <div class="kpi-num" id="rptOccupancyRate">1.1%</div>
+              <div class="kpi-lbl">Porcentaje de Cobertura</div>
+            </div>
+          </div>
+
+          <!-- Tabla Detallada de las 13 Comisiones / Ventanas -->
+          <div class="report-table-title">
+            <span>Matriz Detallada de Comisiones y Ventanas Tácticas</span>
+            <span style="font-size: 0.725rem; font-weight: 600; color: #64748b;">13 Comisiones Operativas</span>
+          </div>
+
+          <table class="report-data-table">
+            <thead>
+              <tr>
+                <th style="width: 4%;">N°</th>
+                <th style="width: 32%;">Comisión / Ventana Táctica</th>
+                <th style="width: 11%; text-align: center;">Cupo Inicial</th>
+                <th style="width: 12%; text-align: center;">Disponibles</th>
+                <th style="width: 11%; text-align: center;">Ocupados</th>
+                <th style="width: 12%; text-align: center;">Estado</th>
+                <th style="width: 18%;">Oficial Asignado</th>
+              </tr>
+            </thead>
+            <tbody id="rptTableBody">
+              <!-- Inyectado dinámicamente con los datos de las 13 comisiones -->
+            </tbody>
+          </table>
+
+          <!-- Certificación y Directiva Legal -->
+          <div class="report-legal-note">
+            <strong>CERTIFICACIÓN DE REGISTRO ÚNICO Y CONTROL DE CUPOS:</strong>
+            El presente informe certifica la asignación oficial del Oficial Administrador con control total sobre el sistema,
+            y el estado en tiempo real de los cupos y personal distribuido en las 13 comisiones tácticas.
+            La información contenida en este documento es oficial, vinculante y respaldada por la bitácora del sistema.
+          </div>
+
+          <!-- Bloque de Firmas Oficiales -->
+          <div class="report-signatures">
+            <div class="signature-slot">
+              <div class="signature-line"></div>
+              <strong id="rptSignAdminName">OFICIAL ADMINISTRADOR DE LA APP</strong>
+              <span id="rptSignAdminRank">Grado y Firma del Responsable</span>
+            </div>
+            <div class="signature-slot">
+              <div class="signature-line"></div>
+              <strong>COMANDO SUPERIOR / ESTADO MAYOR</strong>
+              <span>Vo. Bo. y Control de Despliegue</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" id="btnPrintModalClose">Cerrar</button>
+        <button type="button" class="btn-print" id="btnPrintModalExecute" style="padding: 0.65rem 1.25rem; font-size: 0.85rem;">
+          <span>🖨️ Imprimir / Guardar en PDF</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Personalización Táctica: Escudo y Fondos con Contraste Sutil -->
+  <div class="modal-overlay hidden" id="themeCustomizerModal">
+    <div class="modal-card modal-card-theme">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span style="font-size: 1.3rem;">🎨</span>
+          <div>
+            <h3 style="margin: 0; font-size: 1rem; color: #ffffff;">Personalización: Escudo y Fondo</h3>
+            <span style="font-size: 0.725rem; color: #94a3b8;">Inserción de imágenes y contraste sutil con el fondo</span>
+          </div>
+        </div>
+        <button type="button" class="modal-close" id="btnThemeModalCloseX">&times;</button>
+      </div>
+
+      <div class="modal-body modal-body-scrollable" style="padding: 1.25rem;">
+        <!-- Pestañas de Navegación -->
+        <div class="theme-tabs-nav">
+          <button type="button" class="theme-tab-btn active" id="tabBtnEscudo">
+            <span>🛡️ Escudo Institucional</span>
+          </button>
+          <button type="button" class="theme-tab-btn" id="tabBtnFondo">
+            <span>🌌 Fondo y Contraste Sutil</span>
+          </button>
+        </div>
+
+        <!-- PANEL 1: ESCUDO INSTITUCIONAL / MILITAR -->
+        <div class="theme-tab-panel" id="panelEscudo">
+          <!-- Vista previa y controles inmediatos -->
+          <div style="display: flex; gap: 1.25rem; align-items: center; background: #0c131d; border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap;">
+            <div style="text-align: center;">
+              <div class="escudo-container escudo-preview-size" id="escudoLivePreview">
+                <!-- Se actualiza dinámicamente con la imagen o vector del escudo -->
+              </div>
+              <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.4rem;" id="escudoPreviewLabel">Escudo Actual</div>
+            </div>
+            <div style="flex: 1; min-width: 220px;">
+              <h4 style="font-size: 0.9rem; color: #fde68a; margin-bottom: 0.35rem;">Emblema Activo de la App</h4>
+              <p style="font-size: 0.8rem; color: #cbd5e1; line-height: 1.4; margin-bottom: 0.75rem;">
+                Este escudo se refleja automáticamente en la cabecera del sistema, tarjetas de los módulos y en el <strong>Reporte Oficial PDF para impresión</strong>.
+              </p>
+              <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <button type="button" class="btn-secondary" id="btnResetEscudoOnly" style="font-size: 0.75rem; padding: 0.35rem 0.75rem;">
+                  <span>↺ Restablecer Escudo</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Opciones de inserción: Subir archivo o URL -->
+          <div class="theme-section-title">
+            <span>1. Insertar Imagen de Escudo</span>
+          </div>
+
+          <div class="upload-dropzone" id="escudoDropzone">
+            <input type="file" id="escudoFileInput" accept="image/*" style="display: none;" />
+            <div style="font-size: 1.8rem; line-height: 1;">📂</div>
+            <div style="font-size: 0.85rem; font-weight: 700; color: #e2e8f0; margin-top: 0.35rem;">
+              Haga clic aquí o arrastre su imagen de escudo
+            </div>
+            <p>Formatos soportados: PNG, JPG, SVG, WebP (Recomendado: fondo transparente o escudo recortado, máx 4MB)</p>
+          </div>
+
+          <div style="display: flex; gap: 0.5rem; margin-top: 0.6rem; align-items: center;">
+            <input
+              type="url"
+              id="escudoUrlInput"
+              placeholder="O pegar URL pública de la imagen del escudo (https://...)"
+              style="font-size: 0.8rem; flex: 1; background: #0c131d;"
+            />
+            <button type="button" class="btn-secondary" id="btnApplyEscudoUrl" style="padding: 0.65rem 1rem; font-size: 0.8rem; white-space: nowrap;">
+              Cargar URL
+            </button>
+          </div>
+
+          <!-- Galería de Escudos Tácticos Oficiales -->
+          <div class="theme-section-title" style="margin-top: 1.25rem;">
+            <span>2. O Seleccionar un Escudo Táctico Predefinido</span>
+          </div>
+          <div class="presets-grid" id="escudoPresetsGrid">
+            <!-- Inyectados por JavaScript con vectores SVG de alta definición -->
+          </div>
+
+          <!-- Contraste de Halo / Borde del Escudo -->
+          <div class="contrast-controls-card">
+            <div class="theme-section-title" style="margin-bottom: 0.4rem;">
+              <span>3. Halo de Contraste Sutil del Escudo</span>
+            </div>
+            <p style="font-size: 0.775rem; color: var(--text-muted); margin-bottom: 0.6rem;">
+              Añade un resplandor y anillo de contraste sutil para que el escudo resalte elegantemente sobre cualquier fondo:
+            </p>
+            <div class="halo-selector-row" id="haloSelectorRow">
+              <button type="button" class="halo-chip active" data-halo="gold">🟡 Dorado Táctico</button>
+              <button type="button" class="halo-chip" data-halo="emerald">🟢 Esmeralda Militar</button>
+              <button type="button" class="halo-chip" data-halo="cyan">🔵 Cian Operativo</button>
+              <button type="button" class="halo-chip" data-halo="silver">⚪ Plata de Oficial</button>
+              <button type="button" class="halo-chip" data-halo="none">⚫ Sin Halo</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- PANEL 2: FONDOS DE LA APP Y CONTRASTE SUTIL -->
+        <div class="theme-tab-panel hidden" id="panelFondo">
+          <!-- Opciones de inserción: Subir fondo personalizado -->
+          <div class="theme-section-title">
+            <span>1. Insertar Imagen de Fondo de la App</span>
+          </div>
+
+          <div class="upload-dropzone" id="bgDropzone">
+            <input type="file" id="bgFileInput" accept="image/*" style="display: none;" />
+            <div style="font-size: 1.8rem; line-height: 1;">🖼️</div>
+            <div style="font-size: 0.85rem; font-weight: 700; color: #e2e8f0; margin-top: 0.35rem;">
+              Haga clic aquí o arrastre su imagen de fondo táctico
+            </div>
+            <p>Fotografías aéreas, mapas tácticos, texturas o wallpapers militares (JPG, PNG, WebP)</p>
+          </div>
+
+          <div style="display: flex; gap: 0.5rem; margin-top: 0.6rem; align-items: center;">
+            <input
+              type="url"
+              id="bgUrlInput"
+              placeholder="O pegar URL pública de la imagen de fondo (https://...)"
+              style="font-size: 0.8rem; flex: 1; background: #0c131d;"
+            />
+            <button type="button" class="btn-secondary" id="btnApplyBgUrl" style="padding: 0.65rem 1rem; font-size: 0.8rem; white-space: nowrap;">
+              Cargar URL
+            </button>
+          </div>
+
+          <!-- Galería de Fondos Tácticos Vectoriales -->
+          <div class="theme-section-title" style="margin-top: 1.25rem;">
+            <span>2. O Seleccionar un Fondo Militar Táctico</span>
+          </div>
+          <div class="presets-grid" id="bgPresetsGrid">
+            <!-- Inyectados por JavaScript con patrones SVG sutiles -->
+          </div>
+
+          <!-- Controles de Contraste Sutil con el Color de Fondo -->
+          <div class="contrast-controls-card">
+            <div class="theme-section-title" style="color: #6ee7b7; margin-bottom: 0.6rem;">
+              <span>3. Ajustes de Contraste Sutil con el Color de Fondo</span>
+            </div>
+
+            <!-- Deslizador de Opacidad de la Imagen de Fondo -->
+            <div class="control-slider-group">
+              <div class="control-slider-header">
+                <span>Opacidad / Intensidad de la Imagen:</span>
+                <span class="control-slider-val" id="valBgOpacity">18%</span>
+              </div>
+              <input type="range" class="custom-range-slider" id="sliderBgOpacity" min="5" max="65" value="18" step="1" />
+              <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: #64748b; margin-top: 0.2rem;">
+                <span>5% (Ultra sutil)</span>
+                <span>18% (Equilibrado militar)</span>
+                <span>65% (Pronunciado)</span>
+              </div>
+            </div>
+
+            <!-- Deslizador de Desenfoque Sutil (Blur) -->
+            <div class="control-slider-group">
+              <div class="control-slider-header">
+                <span>Desenfoque Sutil de la Imagen (Bokeh Táctico):</span>
+                <span class="control-slider-val" id="valBgBlur">0 px</span>
+              </div>
+              <input type="range" class="custom-range-slider" id="sliderBgBlur" min="0" max="6" value="0" step="1" />
+              <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: #64748b; margin-top: 0.2rem;">
+                <span>0 px (Nítido)</span>
+                <span>3 px (Suave)</span>
+                <span>6 px (Difuminado)</span>
+              </div>
+            </div>
+
+            <!-- Selector de Color Base de Fondo de la App -->
+            <div class="control-slider-group">
+              <div class="control-slider-header">
+                <span>Color de Fondo Base Militar:</span>
+                <span class="control-slider-val" id="valBgColor">#0a0f16</span>
+              </div>
+              <div class="color-swatches-row" id="colorSwatchesRow">
+                <button type="button" class="color-swatch-btn active" data-color="#0a0f16" style="background: #0a0f16;" title="Azul Táctico Profundo (Predeterminado)"></button>
+                <button type="button" class="color-swatch-btn" data-color="#07130b" style="background: #07130b;" title="Verde Oliva Militar"></button>
+                <button type="button" class="color-swatch-btn" data-color="#111418" style="background: #111418;" title="Gris Carbón / Asfalto Operativo"></button>
+                <button type="button" class="color-swatch-btn" data-color="#0a1220" style="background: #0a1220;" title="Azul Acero de Estado Mayor"></button>
+                <button type="button" class="color-swatch-btn" data-color="#16120b" style="background: #16120b;" title="Desértico Camo Táctico"></button>
+                <label style="display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: #cbd5e1; cursor: pointer; margin-left: 0.5rem;">
+                  <span>Personalizado:</span>
+                  <input type="color" id="customBgColorInput" value="#0a0f16" style="width: 28px; height: 28px; border: none; background: transparent; cursor: pointer;" />
+                </label>
+              </div>
+            </div>
+
+            <!-- Modo de Fusión / Blend Mode -->
+            <div class="control-slider-group" style="margin-bottom: 0;">
+              <div class="control-slider-header">
+                <span>Modo de Fusión con el Fondo:</span>
+              </div>
+              <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.3rem;" id="blendModeRow">
+                <button type="button" class="halo-chip active" data-blend="overlay">Superposición (Overlay)</button>
+                <button type="button" class="halo-chip" data-blend="soft-light">Luz Suave (Soft-Light)</button>
+                <button type="button" class="halo-chip" data-blend="luminosity">Luminosidad</button>
+                <button type="button" class="halo-chip" data-blend="normal">Normal</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="justify-content: space-between;">
+        <button type="button" class="btn-secondary" id="btnResetThemeDefaults" style="font-size: 0.8rem;">
+          <span>↺ Valores Predeterminados</span>
+        </button>
+        <button type="button" class="btn-submit" id="btnApplyThemeClose" style="width: auto; padding: 0.6rem 1.4rem; font-size: 0.85rem;">
+          <span>✓ Aplicar y Guardar</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * CONFIGURACIÓN OFICIAL DE LAS 13 COMISIONES Y CUPOS MÁXIMOS
+     */
+    const COMMISSIONS_DATA = [
+      { id: "com_org", name: "Organización y coordinación", maxQuota: 5 },
+      { id: "com_insc", name: "Comisión inscripciones", maxQuota: 5 },
+      { id: "com_dors", name: "Comisión dorsales", maxQuota: 3 },
+      { id: "com_med", name: "Comisión de medallas finisher", maxQuota: 3 },
+      { id: "com_hidr", name: "Comisión puntos de hidratación", maxQuota: 14 },
+      { id: "com_part", name: "Comisión partida", maxQuota: 5 },
+      { id: "com_lleg", name: "Comisión llegada", maxQuota: 5 },
+      { id: "com_prem", name: "Comisión premiación", maxQuota: 5 },
+      { id: "com_seg", name: "Comisión seguridad y tránsito vehicular", maxQuota: 20 },
+      { id: "com_cron", name: "Comisión registro y cronómetro", maxQuota: 8 },
+      { id: "com_ruta", name: "Comisión controles durante la ruta", maxQuota: 16 },
+      { id: "com_ausp", name: "Comisión auspiciadores", maxQuota: 8 },
+      { id: "com_econ", name: "Comisión económica", maxQuota: 2 }
+    ];
+
+    // Claves oficiales de persistencia LocalStorage (Módulo 3: Persistencia Logística)
+    const STORAGE_KEY_COMMISSIONS = "comisiones";
+    const STORAGE_KEY_PERSONNEL = "personalRegistrado";
+    const STORAGE_KEY_QUOTAS = "cupos_comisiones";
+    const STORAGE_KEY_ADMIN = "militar_admin_officer_v4";
+    const STORAGE_KEY_STATE = "militar_admin_state_v4";
+
+    // Estado reactivo de la aplicación
+    const state = {
+      adminOfficer: null, // { id, rank, fullName, commissionId, commissionName, role, timestamp }
+      quotas: {},
+      assignedOfficers: {},
+      registeredOfficers: [],
+      isEditing: false,
+      onlineUsers: 1
+    };
+
+    // Inicializar cupos y colecciones
+    COMMISSIONS_DATA.forEach(c => {
+      state.quotas[c.id] = c.maxQuota;
+      state.assignedOfficers[c.id] = [];
+    });
+
+    // Elementos del DOM
+    const mainContainer = document.getElementById("mainContainer");
+    const moduleBadge = document.getElementById("moduleBadge");
+    const onlineUsersCount = document.getElementById("onlineUsersCount");
+
+    const moduleRegistrationCard = document.getElementById("moduleRegistrationCard");
+    const moduleDeploymentCard = document.getElementById("moduleDeploymentCard");
+
+    const form = document.getElementById("militaryRegistrationForm");
+    const formHeaderTitle = document.getElementById("formHeaderTitle");
+    const formHeaderBadge = document.getElementById("formHeaderBadge");
+    const rankSelect = document.getElementById("rankSelect");
+    const fullNameInput = document.getElementById("fullNameInput");
+    const commissionSelect = document.getElementById("commissionSelect");
+    const alertFeedback = document.getElementById("alertFeedback");
+    const quotaMonitorList = document.getElementById("quotaMonitorList");
+    const totalRemainingIndicator = document.getElementById("totalRemainingIndicator");
+
+    const submitBtn = document.getElementById("submitBtn");
+    const btnCancelEdit = document.getElementById("btnCancelEdit");
+    const btnStartEdit = document.getElementById("btnStartEdit");
+    const btnDeleteRecord = document.getElementById("btnDeleteRecord");
+    const alreadyRegisteredBanner = document.getElementById("alreadyRegisteredBanner");
+    const alreadyRegisteredText = document.getElementById("alreadyRegisteredText");
+    const registeredActionsBar = document.getElementById("registeredActionsBar");
+    const btnReturnToDeployment = document.getElementById("btnReturnToDeployment");
+
+    const deploymentGrid = document.getElementById("deploymentGrid");
+    const recentBanner = document.getElementById("recentBanner");
+    const recentOfficerText = document.getElementById("recentOfficerText");
+    const recentTimeText = document.getElementById("recentTimeText");
+    const btnBannerEdit = document.getElementById("btnBannerEdit");
+    const btnBannerDelete = document.getElementById("btnBannerDelete");
+    const btnBackToRegister = document.getElementById("btnBackToRegister");
+    const btnLogout = document.getElementById("btnLogout");
+
+    // Elementos de Modales Tácticos In-App
+    const editQuotaModal = document.getElementById("editQuotaModal");
+    const modalQuotaTitle = document.getElementById("modalQuotaTitle");
+    const modalQuotaDesc = document.getElementById("modalQuotaDesc");
+    const modalQuotaInput = document.getElementById("modalQuotaInput");
+    const btnQuotaMinus = document.getElementById("btnQuotaMinus");
+    const btnQuotaPlus = document.getElementById("btnQuotaPlus");
+    const btnQuotaModalSave = document.getElementById("btnQuotaModalSave");
+    const btnQuotaModalCancel = document.getElementById("btnQuotaModalCancel");
+    const btnQuotaModalClose = document.getElementById("btnQuotaModalClose");
+
+    const deleteConfirmModal = document.getElementById("deleteConfirmModal");
+    const deleteModalOfficerInfo = document.getElementById("deleteModalOfficerInfo");
+    const btnDeleteModalConfirm = document.getElementById("btnDeleteModalConfirm");
+    const btnDeleteModalCancel = document.getElementById("btnDeleteModalCancel");
+    const btnDeleteModalClose = document.getElementById("btnDeleteModalClose");
+
+    // Elementos del Modal de Reporte e Impresión en PDF
+    const btnPrintDeploymentPdf = document.getElementById("btnPrintDeploymentPdf");
+    const btnBannerPrintPdf = document.getElementById("btnBannerPrintPdf");
+    const printReportModal = document.getElementById("printReportModal");
+    const btnPrintModalExecute = document.getElementById("btnPrintModalExecute");
+    const btnPrintModalClose = document.getElementById("btnPrintModalClose");
+    const btnPrintModalCloseX = document.getElementById("btnPrintModalCloseX");
+
+    const rptAdminName = document.getElementById("rptAdminName");
+    const rptAdminRank = document.getElementById("rptAdminRank");
+    const rptAdminCommission = document.getElementById("rptAdminCommission");
+    const rptTimestamp = document.getElementById("rptTimestamp");
+    const rptDocCode = document.getElementById("rptDocCode");
+    const rptOnlineUsers = document.getElementById("rptOnlineUsers");
+    const rptTotalCapacity = document.getElementById("rptTotalCapacity");
+    const rptTotalAssigned = document.getElementById("rptTotalAssigned");
+    const rptTotalRemaining = document.getElementById("rptTotalRemaining");
+    const rptOccupancyRate = document.getElementById("rptOccupancyRate");
+    const rptTableBody = document.getElementById("rptTableBody");
+    const rptSignAdminName = document.getElementById("rptSignAdminName");
+    const rptSignAdminRank = document.getElementById("rptSignAdminRank");
+
+    let currentEditingCommissionId = null;
+    let alertTimeout = null;
+
+    // Sincronización entre pestañas en tiempo real
+    const syncChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('military_admin_channel') : null;
+
+    if (syncChannel) {
+      syncChannel.onmessage = function (e) {
+        handleRealTimeEvent(e.data.event, e.data.payload);
+      };
+    }
+
+    // Conexión WebSocket en tiempo real
+    let socket = null;
+    let reconnectTimer = null;
+
+    function initWebSocket() {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/ws`;
+
+      try {
+        socket = new WebSocket(wsUrl);
+
+        socket.onopen = function () {
+          console.log("WebSocket Militar Conectado");
+          if (reconnectTimer) clearTimeout(reconnectTimer);
+        };
+
+        socket.onmessage = function (event) {
+          try {
+            const data = JSON.parse(event.data);
+            handleRealTimeEvent(data.event, data.payload);
+          } catch (err) {
+            console.error("Error al procesar WebSocket:", err);
+          }
+        };
+
+        socket.onclose = function () {
+          reconnectTimer = setTimeout(initWebSocket, 3000);
+        };
+
+        socket.onerror = function () {
+          if (socket) socket.close();
+        };
+      } catch (e) {
+        console.warn("WebSocket no disponible, operando con sincronización local y REST.");
+      }
+    }
+
+    /**
+     * Procesa los eventos emitidos por el servidor o pestañas
+     */
+    function handleRealTimeEvent(event, payload) {
+      if (!payload) return;
+
+      if (event === 'presence:update') {
+        const count = payload.onlineCount || 1;
+        state.onlineUsers = count;
+        onlineUsersCount.textContent = `${count} ${count === 1 ? 'en línea' : 'en línea'}`;
+      } else if (event === 'sync:state') {
+        if (payload.quotas) state.quotas = payload.quotas;
+        if (payload.assignedOfficers) state.assignedOfficers = payload.assignedOfficers;
+        if (payload.adminOfficer !== undefined) {
+          state.adminOfficer = payload.adminOfficer;
+          if (payload.adminOfficer) {
+            localStorage.setItem(STORAGE_KEY_ADMIN, JSON.stringify(payload.adminOfficer));
+          } else {
+            localStorage.removeItem(STORAGE_KEY_ADMIN);
+          }
+        }
+        if (payload.onlineCount) {
+          state.onlineUsers = payload.onlineCount;
+          onlineUsersCount.textContent = `${payload.onlineCount} ${payload.onlineCount === 1 ? 'en línea' : 'en línea'}`;
+        }
+        updateInterfaceState();
+      } else if (event === 'admin:registered' || event === 'admin:updated') {
+        if (payload.quotas) state.quotas = payload.quotas;
+        if (payload.assignedOfficers) state.assignedOfficers = payload.assignedOfficers;
+        state.adminOfficer = payload.adminOfficer;
+        if (payload.adminOfficer) {
+          localStorage.setItem(STORAGE_KEY_ADMIN, JSON.stringify(payload.adminOfficer));
+        }
+        updateInterfaceState();
+      } else if (event === 'admin:deleted') {
+        if (payload.quotas) state.quotas = payload.quotas;
+        if (payload.assignedOfficers) state.assignedOfficers = payload.assignedOfficers;
+        state.adminOfficer = null;
+        localStorage.removeItem(STORAGE_KEY_ADMIN);
+        localStorage.removeItem(STORAGE_KEY_STATE);
+        updateInterfaceState();
+      } else if (event === 'window:quota_updated') {
+        if (payload.quotas) state.quotas = payload.quotas;
+        renderCommissionDropdown();
+        renderDeploymentPanel();
+      }
+    }
+
+    /**
+     * Emite un evento por WebSocket, REST API y BroadcastChannel (garantía total de persistencia)
+     */
+    function emitRealTime(type, payload) {
+      // 1. WebSocket en tiempo real
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type, payload }));
+      }
+
+      // 2. BroadcastChannel para sincronía inmediata entre pestañas locales
+      if (syncChannel) {
+        syncChannel.postMessage({
+          event: type === 'register_admin' ? 'admin:registered' : type === 'update_admin' ? 'admin:updated' : type === 'delete_admin' ? 'admin:deleted' : 'window:quota_updated',
+          payload: {
+            adminOfficer: state.adminOfficer,
+            quotas: state.quotas,
+            assignedOfficers: state.assignedOfficers
+          }
+        });
+      }
+
+      // 3. Fallback y persistencia REST API
+      let endpoint = null;
+      if (type === 'register_admin') endpoint = '/api/register';
+      else if (type === 'update_admin') endpoint = '/api/update';
+      else if (type === 'delete_admin') endpoint = '/api/delete';
+      else if (type === 'update_window_quota') endpoint = '/api/window_quota';
+
+      if (endpoint) {
+        fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload || {})
+        }).catch(err => console.warn('REST fallback notification:', err));
+      }
+    }
+
+    /**
+     * ==========================================================================
+     * MÓDULO 3 - REQUERIMIENTO 1: Lógica de Guardado (JavaScript en Local Storage)
+     * ==========================================================================
+     * Cada vez que se registre exitosamente un oficial en el formulario y los cupos
+     * se actualicen, guarda el estado actual de las comisiones (con sus cupos restantes)
+     * y el arreglo/lista del personal registrado en el localStorage del navegador.
+     */
+    function saveLogisticDataToLocalStorage() {
+      try {
+        // 1. Estado de las 13 comisiones con sus cupos restantes
+        const commissionsState = COMMISSIONS_DATA.map(c => ({
+          id: c.id,
+          name: c.name,
+          maxQuota: c.maxQuota,
+          remaining: state.quotas[c.id],
+          cuposRestantes: state.quotas[c.id]
+        }));
+        localStorage.setItem(STORAGE_KEY_COMMISSIONS, JSON.stringify(commissionsState));
+        localStorage.setItem(STORAGE_KEY_QUOTAS, JSON.stringify(state.quotas));
+
+        // 2. Arreglo/lista del personal registrado
+        localStorage.setItem(STORAGE_KEY_PERSONNEL, JSON.stringify(state.registeredOfficers));
+        localStorage.setItem("personal_registrado", JSON.stringify(state.registeredOfficers));
+
+        // 3. Compatibilidad con estado consolidado
+        localStorage.setItem(STORAGE_KEY_STATE, JSON.stringify({
+          adminOfficer: state.adminOfficer,
+          quotas: state.quotas,
+          assignedOfficers: state.assignedOfficers,
+          registeredOfficers: state.registeredOfficers
+        }));
+
+        if (state.adminOfficer) {
+          localStorage.setItem(STORAGE_KEY_ADMIN, JSON.stringify(state.adminOfficer));
+        }
+      } catch (err) {
+        console.error("Error al guardar en LocalStorage (Módulo 3):", err);
+      }
+    }
+
+    /**
+     * ==========================================================================
+     * MÓDULO 3 - REQUERIMIENTO 2: Lógica de Recuperación (JavaScript desde Local Storage)
+     * ==========================================================================
+     * Al cargar la página (DOMContentLoaded o window.onload), verifica si existen
+     * datos guardados en el localStorage y reconstruye el estado de la aplicación:
+     * a) Rellenar las listas (<ul>) de las 13 tarjetas de comisiones con nombres y grados.
+     * b) Actualizar los textos de "Cupos restantes" en cada tarjeta.
+     * c) Actualizar las opciones del selector (Dropdown) inhabilitando comisiones con cupo 0.
+     */
+    function loadLogisticDataFromLocalStorage() {
+      try {
+        let hasSavedData = false;
+
+        // 1. Verificar y recuperar estado de comisiones y cupos restantes
+        const savedCommissionsRaw = localStorage.getItem(STORAGE_KEY_COMMISSIONS) || localStorage.getItem(STORAGE_KEY_QUOTAS);
+        if (savedCommissionsRaw) {
+          const parsed = JSON.parse(savedCommissionsRaw);
+          if (Array.isArray(parsed)) {
+            parsed.forEach(item => {
+              if (item && item.id) {
+                const rem = item.cuposRestantes !== undefined ? item.cuposRestantes : (item.remaining !== undefined ? item.remaining : item.remainingQuota);
+                if (typeof rem === 'number') {
+                  state.quotas[item.id] = rem;
+                  hasSavedData = true;
+                }
+              }
+            });
+          } else if (typeof parsed === 'object' && parsed !== null) {
+            Object.keys(parsed).forEach(comId => {
+              if (typeof parsed[comId] === 'number') {
+                state.quotas[comId] = parsed[comId];
+                hasSavedData = true;
+              }
+            });
+          }
+        }
+
+        // 2. Verificar y recuperar lista del personal registrado
+        const savedPersonnelRaw = localStorage.getItem(STORAGE_KEY_PERSONNEL) || localStorage.getItem("personal_registrado");
+        if (savedPersonnelRaw) {
+          const parsedPersonnel = JSON.parse(savedPersonnelRaw);
+          if (Array.isArray(parsedPersonnel)) {
+            state.registeredOfficers = parsedPersonnel;
+            hasSavedData = true;
+
+            // Limpiar listas de asignación antes de reconstruir
+            COMMISSIONS_DATA.forEach(c => {
+              state.assignedOfficers[c.id] = [];
+            });
+
+            // Agrupar personal en sus comisiones correspondientes
+            parsedPersonnel.forEach(officer => {
+              if (officer && officer.commissionId && state.assignedOfficers[officer.commissionId]) {
+                state.assignedOfficers[officer.commissionId].push(officer);
+              }
+            });
+
+            if (!state.adminOfficer && parsedPersonnel.length > 0) {
+              const adminCandidate = parsedPersonnel.find(o => o.role === "ADMINISTRADOR") || parsedPersonnel[0];
+              state.adminOfficer = adminCandidate;
+            }
+          }
+        }
+
+        // 3. Fallback de compatibilidad con STORAGE_KEY_STATE
+        if (!hasSavedData) {
+          const savedStateRaw = localStorage.getItem(STORAGE_KEY_STATE);
+          if (savedStateRaw) {
+            const parsedState = JSON.parse(savedStateRaw);
+            if (parsedState.quotas) {
+              state.quotas = parsedState.quotas;
+              hasSavedData = true;
+            }
+            if (parsedState.registeredOfficers && Array.isArray(parsedState.registeredOfficers)) {
+              state.registeredOfficers = parsedState.registeredOfficers;
+              COMMISSIONS_DATA.forEach(c => { state.assignedOfficers[c.id] = []; });
+              parsedState.registeredOfficers.forEach(officer => {
+                if (officer && officer.commissionId && state.assignedOfficers[officer.commissionId]) {
+                  state.assignedOfficers[officer.commissionId].push(officer);
+                }
+              });
+              hasSavedData = true;
+            } else if (parsedState.assignedOfficers) {
+              state.assignedOfficers = parsedState.assignedOfficers;
+              state.registeredOfficers = [];
+              Object.values(parsedState.assignedOfficers).forEach(list => {
+                if (Array.isArray(list)) state.registeredOfficers.push(...list);
+              });
+              hasSavedData = true;
+            }
+            if (parsedState.adminOfficer) state.adminOfficer = parsedState.adminOfficer;
+          }
+
+          const savedAdminRaw = localStorage.getItem(STORAGE_KEY_ADMIN);
+          if (savedAdminRaw && !state.adminOfficer) {
+            try {
+              state.adminOfficer = JSON.parse(savedAdminRaw);
+            } catch (e) {}
+          }
+        }
+
+        // 4. Reconstrucción del estado de la aplicación:
+        // a) Rellenar las listas (<ul>) de las 13 tarjetas de comisiones con nombres y grados
+        // b) Actualizar los textos de "Cupos restantes" en cada tarjeta
+        renderDeploymentPanel();
+
+        // c) Actualizar las opciones del selector (Dropdown) inhabilitando comisiones que estén en 0
+        renderCommissionDropdown();
+
+        if (state.registeredOfficers.length > 0 || state.adminOfficer) {
+          if (btnReturnToDeployment) btnReturnToDeployment.style.display = "inline-flex";
+          const lastOfficer = state.registeredOfficers[state.registeredOfficers.length - 1] || state.adminOfficer;
+          if (recentBanner && lastOfficer) {
+            recentBanner.style.display = "flex";
+            if (recentOfficerText) recentOfficerText.textContent = `${lastOfficer.rank} ${lastOfficer.fullName} ➔ ${lastOfficer.commissionName}`;
+            if (recentTimeText) recentTimeText.textContent = `Registrado: ${lastOfficer.timestamp || 'Hoy'}`;
+          }
+        }
+
+        return hasSavedData;
+      } catch (err) {
+        console.error("Error al recuperar datos de LocalStorage (Módulo 3):", err);
+        return false;
+      }
+    }
+
+    // Convertir nombre completo en mayúsculas automáticamente y restringir únicamente a letras y espacios
+    fullNameInput.addEventListener("input", function () {
+      this.value = this.value.toUpperCase().replace(/[^A-ZÁÉÍÓÚÜÑ\s]/g, '');
+    });
+
+    /**
+     * Alertas visuales
+     */
+    function showAlert(message, type = "danger") {
+      if (alertTimeout) clearTimeout(alertTimeout);
+      
+      alertFeedback.textContent = message;
+      alertFeedback.className = "alert " + (type === "success" ? "alert-success" : "alert-danger");
+      alertFeedback.style.display = "flex";
+
+      alertTimeout = setTimeout(() => {
+        alertFeedback.style.display = "none";
+      }, 4000);
+    }
+
+    /**
+     * Actualiza el selector de comisiones y el monitor de cupos
+     */
+    function renderCommissionDropdown() {
+      const currentSelectedValue = commissionSelect.value;
+      const admin = state.adminOfficer;
+
+      commissionSelect.innerHTML = '<option value="" disabled selected>-- Seleccione una comisión --</option>';
+
+      let totalRemaining = 0;
+
+      COMMISSIONS_DATA.forEach(com => {
+        let remaining = state.quotas[com.id];
+        // En modo edición, el Administrador puede mantener su comisión actual
+        if (state.isEditing && admin && admin.commissionId === com.id) {
+          remaining = (remaining || 0) + 1;
+        }
+
+        totalRemaining += Math.max(0, state.quotas[com.id]);
+
+        const option = document.createElement("option");
+        option.value = com.id;
+
+        if (remaining <= 0) {
+          option.disabled = true;
+          option.textContent = `${com.name} (Sin cupo disponible - 0)`;
+        } else {
+          option.textContent = `${com.name} (Quedan: ${remaining})`;
+        }
+
+        commissionSelect.appendChild(option);
+      });
+
+      if (currentSelectedValue && (state.quotas[currentSelectedValue] > 0 || (state.isEditing && admin && admin.commissionId === currentSelectedValue))) {
+        commissionSelect.value = currentSelectedValue;
+      } else if (state.isEditing && admin) {
+        commissionSelect.value = admin.commissionId;
+      } else {
+        commissionSelect.value = "";
+      }
+
+      renderQuotaMonitor(totalRemaining);
+    }
+
+    /**
+     * Monitor táctico en Módulo 1
+     */
+    function renderQuotaMonitor(totalRemaining) {
+      quotaMonitorList.innerHTML = "";
+      totalRemainingIndicator.textContent = `${totalRemaining} cupos disponibles`;
+
+      COMMISSIONS_DATA.forEach(com => {
+        const remaining = state.quotas[com.id];
+        const item = document.createElement("div");
+        item.className = `quota-item ${remaining === 0 ? "depleted" : ""}`;
+
+        const nameSpan = document.createElement("span");
+        nameSpan.className = "quota-item-name";
+        nameSpan.textContent = com.name;
+        nameSpan.title = com.name;
+
+        const badgeSpan = document.createElement("span");
+        badgeSpan.className = `quota-badge ${remaining === 0 ? "zero" : ""}`;
+        badgeSpan.textContent = remaining === 0 ? "0 / AGOTADO" : `${remaining} disp.`;
+
+        item.appendChild(nameSpan);
+        item.appendChild(badgeSpan);
+        quotaMonitorList.appendChild(item);
+      });
+    }
+
+    /**
+     * Renderiza las 13 tarjetas/ventanas con privilegios de Administrador
+     */
+    function renderDeploymentPanel() {
+      deploymentGrid.innerHTML = "";
+      const admin = state.adminOfficer;
+
+      COMMISSIONS_DATA.forEach(com => {
+        const remaining = state.quotas[com.id];
+        const assignedList = state.assignedOfficers[com.id] || [];
+        const isDepleted = remaining <= 0;
+        const isHighlighted = admin && admin.commissionId === com.id;
+
+        const card = document.createElement("div");
+        card.className = `commission-card ${isDepleted ? "depleted" : ""} ${isHighlighted ? "highlight" : ""}`;
+        card.id = `card-${com.id}`;
+
+        // Header de la tarjeta / ventana
+        const header = document.createElement("div");
+        header.className = "commission-card-header";
+
+        const title = document.createElement("div");
+        title.className = "commission-title";
+        title.textContent = com.name;
+        header.appendChild(title);
+
+        // Control de Administrador para editar la ventana (ajuste de cupo)
+        if (admin) {
+          const editWindowBtn = document.createElement("button");
+          editWindowBtn.type = "button";
+          editWindowBtn.className = "btn-inline-action";
+          editWindowBtn.title = "Administrador: Modificar cupo de esta ventana";
+          editWindowBtn.innerHTML = `<span>⚙️</span>`;
+          editWindowBtn.addEventListener("click", () => editWindowQuota(com.id, com.name, remaining));
+          header.appendChild(editWindowBtn);
+        }
+
+        card.appendChild(header);
+
+        // Body
+        const body = document.createElement("div");
+        body.className = "commission-card-body";
+
+        // Quota Banner muy visible
+        const quotaBanner = document.createElement("div");
+        quotaBanner.className = "quota-banner";
+
+        const quotaLabel = document.createElement("span");
+        quotaLabel.className = "quota-label";
+        quotaLabel.textContent = "Cupos restantes:";
+
+        const quotaCounter = document.createElement("span");
+        quotaCounter.className = `quota-counter ${isDepleted ? "zero" : ""}`;
+        quotaCounter.id = `quota-text-${com.id}`;
+        quotaCounter.textContent = `${remaining} / ${com.maxQuota}`;
+
+        quotaBanner.appendChild(quotaLabel);
+        quotaBanner.appendChild(quotaCounter);
+        body.appendChild(quotaBanner);
+
+        // Subheader de personal
+        const assignedHeader = document.createElement("div");
+        assignedHeader.className = "assigned-header-label";
+        assignedHeader.innerHTML = `<span>Personal Asignado</span><span>Total: ${assignedList.length}</span>`;
+        body.appendChild(assignedHeader);
+
+        // Lista de asignaciones (<ul>)
+        const ul = document.createElement("ul");
+        ul.className = "assigned-list";
+        ul.id = `list-${com.id}`;
+
+        if (assignedList.length === 0) {
+          const emptyLi = document.createElement("li");
+          emptyLi.className = "empty-list-notice";
+          emptyLi.textContent = "Sin personal asignado aún";
+          ul.appendChild(emptyLi);
+        } else {
+          assignedList.forEach(officer => {
+            const li = document.createElement("li");
+            li.className = "assigned-item";
+
+            // Insignia de Administrador
+            const adminTag = document.createElement("span");
+            adminTag.className = "admin-pill";
+            adminTag.textContent = "👑 ADMIN";
+
+            const rankPill = document.createElement("span");
+            rankPill.className = "rank-pill";
+            rankPill.textContent = officer.rank;
+
+            const nameSpan = document.createElement("span");
+            nameSpan.className = "officer-name";
+            nameSpan.textContent = officer.fullName;
+            nameSpan.title = officer.fullName;
+
+            li.appendChild(adminTag);
+            li.appendChild(rankPill);
+            li.appendChild(nameSpan);
+
+            // Acciones directas de Administrador: Modificar o Borrar
+            const actionsDiv = document.createElement("div");
+            actionsDiv.style.display = "flex";
+            actionsDiv.style.gap = "0.25rem";
+
+            const editBtn = document.createElement("button");
+            editBtn.type = "button";
+            editBtn.className = "btn-inline-action";
+            editBtn.title = "Modificar campos de este registro";
+            editBtn.textContent = "✏️";
+            editBtn.addEventListener("click", () => {
+              showModuleRegistration();
+              startEditingRegistration();
+            });
+
+            const delBtn = document.createElement("button");
+            delBtn.type = "button";
+            delBtn.className = "btn-inline-action btn-inline-delete";
+            delBtn.title = "Borrar este registro";
+            delBtn.textContent = "🗑️";
+            delBtn.addEventListener("click", () => {
+              openDeleteAdminModal();
+            });
+
+            actionsDiv.appendChild(editBtn);
+            actionsDiv.appendChild(delBtn);
+            li.appendChild(actionsDiv);
+
+            ul.appendChild(li);
+          });
+        }
+
+        body.appendChild(ul);
+        card.appendChild(body);
+        deploymentGrid.appendChild(card);
+      });
+    }
+
+    /**
+     * FUNCIÓN: Abrir modal de edición de cupo de ventana/comisión (Privilegio de Administrador)
+     */
+    function editWindowQuota(commissionId, commissionName, currentRemaining) {
+      if (!state.adminOfficer) {
+        showAlert("Solo el Administrador registrado puede modificar las ventanas.");
+        return;
+      }
+
+      currentEditingCommissionId = commissionId;
+      modalQuotaTitle.textContent = `Ajustar Cupo: ${commissionName}`;
+      modalQuotaDesc.textContent = `Modificar cupo disponible para la ${commissionName} (Control de Administrador).`;
+      modalQuotaInput.value = currentRemaining;
+      editQuotaModal.classList.remove("hidden");
+      modalQuotaInput.focus();
+    }
+
+    function closeQuotaModal() {
+      editQuotaModal.classList.add("hidden");
+      currentEditingCommissionId = null;
+    }
+
+    btnQuotaMinus.addEventListener("click", () => {
+      const cur = parseInt(modalQuotaInput.value, 10) || 0;
+      if (cur > 0) modalQuotaInput.value = cur - 1;
+    });
+
+    btnQuotaPlus.addEventListener("click", () => {
+      const cur = parseInt(modalQuotaInput.value, 10) || 0;
+      if (cur < 99) modalQuotaInput.value = cur + 1;
+    });
+
+    btnQuotaModalClose.addEventListener("click", closeQuotaModal);
+    btnQuotaModalCancel.addEventListener("click", closeQuotaModal);
+
+    btnQuotaModalSave.addEventListener("click", () => {
+      if (!currentEditingCommissionId) return;
+      const newQuota = parseInt(modalQuotaInput.value, 10);
+      if (isNaN(newQuota) || newQuota < 0) {
+        showAlert("Debe ingresar un número entero válido (mayor o igual a 0).");
+        return;
+      }
+      const comId = currentEditingCommissionId;
+      state.quotas[comId] = newQuota;
+      emitRealTime('update_window_quota', { commissionId: comId, newQuota });
+      renderCommissionDropdown();
+      renderDeploymentPanel();
+      closeQuotaModal();
+      showAlert(`Cupo de comisión actualizado a ${newQuota} por el Administrador.`, "success");
+    });
+
+    /**
+     * FUNCIÓN: Abrir modal para confirmar borrado de registro de Administrador
+     */
+    function openDeleteAdminModal() {
+      const admin = state.adminOfficer;
+      if (!admin) return;
+
+      deleteModalOfficerInfo.innerHTML = `
+        <div><strong>Grado:</strong> ${admin.rank}</div>
+        <div><strong>Nombre:</strong> ${admin.fullName}</div>
+        <div><strong>Comisión Asignada:</strong> ${admin.commissionName}</div>
+      `;
+      deleteConfirmModal.classList.remove("hidden");
+    }
+
+    function closeDeleteModal() {
+      deleteConfirmModal.classList.add("hidden");
+    }
+
+    btnDeleteModalClose.addEventListener("click", closeDeleteModal);
+    btnDeleteModalCancel.addEventListener("click", closeDeleteModal);
+
+    btnDeleteModalConfirm.addEventListener("click", () => {
+      closeDeleteModal();
+      executeDeleteAdmin();
+    });
+
+    /**
+     * Ejecutar el borrado definitivo del Administrador y liberar el sistema
+     */
+    /**
+     * Ejecutar el borrado definitivo del registro y restaurar cupo en Local Storage
+     */
+    function executeDeleteAdmin() {
+      const admin = state.adminOfficer;
+      if (!admin) return;
+
+      const comId = admin.commissionId;
+
+      // 1. Restaurar cupo
+      if (state.quotas[comId] !== undefined) {
+        state.quotas[comId] += 1;
+      }
+      state.assignedOfficers[comId] = (state.assignedOfficers[comId] || []).filter(o => o.id !== admin.id);
+      state.registeredOfficers = (state.registeredOfficers || []).filter(o => o.id !== admin.id);
+      state.adminOfficer = state.registeredOfficers.length > 0 ? state.registeredOfficers[0] : null;
+      state.isEditing = false;
+
+      // 2. Sincronizar persistencia en Local Storage
+      saveLogisticDataToLocalStorage();
+
+      // 3. Emitir evento en tiempo real a todos los clientes y servidor
+      emitRealTime('delete_admin', { id: admin.id, commissionId: comId });
+
+      // 4. Actualizar interfaz
+      resetFormToInitial();
+      renderCommissionDropdown();
+      renderDeploymentPanel();
+      showModuleRegistration();
+
+      showAlert("Registro de oficial eliminado y cupo restaurado en Local Storage.", "success");
+    }
+
+    /**
+     * Actualiza el estado visual completo de la interfaz
+     */
+    function updateInterfaceState() {
+      renderCommissionDropdown();
+      renderDeploymentPanel();
+
+      if (state.registeredOfficers && state.registeredOfficers.length > 0) {
+        const lastOfficer = state.registeredOfficers[state.registeredOfficers.length - 1];
+        if (recentBanner) {
+          recentBanner.style.display = "flex";
+          if (recentOfficerText) recentOfficerText.textContent = `${lastOfficer.rank} ${lastOfficer.fullName} ➔ ${lastOfficer.commissionName}`;
+          if (recentTimeText) recentTimeText.textContent = `Registrado: ${lastOfficer.timestamp || 'Hoy'}`;
+        }
+        if (btnReturnToDeployment) btnReturnToDeployment.style.display = "inline-flex";
+      } else {
+        if (recentBanner) recentBanner.style.display = "none";
+      }
+    }
+
+    /**
+     * Bloquea el formulario en modo Administrador Activo
+     */
+    function lockRegistrationForm(admin) {
+      if (!admin) return;
+      state.isEditing = false;
+
+      rankSelect.value = admin.rank;
+      rankSelect.disabled = true;
+      fullNameInput.value = admin.fullName;
+      fullNameInput.disabled = true;
+      commissionSelect.value = admin.commissionId;
+      commissionSelect.disabled = true;
+
+      submitBtn.disabled = true;
+      submitBtn.style.display = "none";
+      btnCancelEdit.style.display = "none";
+
+      alreadyRegisteredBanner.style.display = "flex";
+      alreadyRegisteredText.innerHTML = `Usted está registrado como el <strong>Administrador de la App</strong> (${admin.rank} ${admin.fullName}) asignado a <strong>${admin.commissionName}</strong>. Cuenta con facultades completas para <strong>modificar todos los campos</strong>, <strong>ajustar ventanas</strong> o <strong>borrar registros</strong>.`;
+      
+      registeredActionsBar.style.display = "flex";
+      btnReturnToDeployment.style.display = "inline-flex";
+
+      formHeaderTitle.textContent = "Oficial Administrador de la App (Registrado)";
+      formHeaderBadge.textContent = "👑 Administrador Activo";
+      formHeaderBadge.style.background = "linear-gradient(135deg, rgba(201, 151, 56, 0.3) 0%, rgba(245, 158, 11, 0.3) 100%)";
+      formHeaderBadge.style.color = "#fde68a";
+    }
+
+    /**
+     * Iniciar edición / modificación de todos los campos por el Administrador
+     */
+    function startEditingRegistration() {
+      const admin = state.adminOfficer;
+      if (!admin) return;
+
+      state.isEditing = true;
+
+      // Habilitar todos los campos para edición
+      rankSelect.disabled = false;
+      fullNameInput.disabled = false;
+      commissionSelect.disabled = false;
+
+      renderCommissionDropdown();
+
+      rankSelect.value = admin.rank;
+      fullNameInput.value = admin.fullName;
+      commissionSelect.value = admin.commissionId;
+
+      submitBtn.disabled = false;
+      submitBtn.style.display = "block";
+      submitBtn.style.opacity = "1";
+      submitBtn.style.cursor = "pointer";
+      submitBtn.innerHTML = `<span>💾</span><span>Guardar Modificaciones</span>`;
+
+      btnCancelEdit.style.display = "inline-flex";
+      registeredActionsBar.style.display = "none";
+      btnReturnToDeployment.style.display = "none";
+
+      formHeaderTitle.textContent = "Modificar Campos del Oficial Administrador";
+      formHeaderBadge.textContent = "✏️ Editando Todos los Campos";
+      formHeaderBadge.style.background = "rgba(59, 130, 246, 0.25)";
+      formHeaderBadge.style.color = "#93c5fd";
+
+      fullNameInput.focus();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    /**
+     * Cancelar edición
+     */
+    function cancelEditingRegistration() {
+      if (state.adminOfficer) {
+        lockRegistrationForm(state.adminOfficer);
+      } else {
+        resetFormToInitial();
+      }
+    }
+
+    /**
+     * Restablece el formulario a su estado inicial para permitir nuevo registro
+     */
+    function resetFormToInitial() {
+      state.isEditing = false;
+      rankSelect.value = "";
+      rankSelect.disabled = false;
+      fullNameInput.value = "";
+      fullNameInput.disabled = false;
+      commissionSelect.value = "";
+      commissionSelect.disabled = false;
+
+      submitBtn.disabled = false;
+      submitBtn.style.display = "block";
+      submitBtn.style.opacity = "1";
+      submitBtn.style.cursor = "pointer";
+      submitBtn.innerHTML = `<span>Registrar y Asignar</span>`;
+
+      btnCancelEdit.style.display = "none";
+      alreadyRegisteredBanner.style.display = "none";
+      registeredActionsBar.style.display = "none";
+      btnReturnToDeployment.style.display = "none";
+
+      formHeaderTitle.textContent = "Registro de Oficial Administrador de la App";
+      formHeaderBadge.textContent = "Perfil: Administrador";
+      formHeaderBadge.style.background = "var(--accent-gold-soft)";
+      formHeaderBadge.style.color = "var(--accent-gold)";
+    }
+
+    /**
+     * Navegación hacia Módulo 2 - Panel de Despliegue
+     */
+    function showModuleDeployment() {
+      if (!state.adminOfficer) {
+        showAlert("ACCESO RESTRINGIDO: Solamente una vez registrado y asignado podrá tener acceso al Panel de Despliegue.");
+        return;
+      }
+
+      moduleRegistrationCard.classList.add("hidden");
+      moduleDeploymentCard.classList.remove("hidden");
+      mainContainer.classList.remove("compact");
+
+      moduleBadge.textContent = "Módulo 2: Panel de Despliegue";
+      moduleBadge.style.borderColor = "var(--primary)";
+      moduleBadge.style.color = "#34d399";
+
+      recentBanner.style.display = "flex";
+      recentOfficerText.textContent = `${state.adminOfficer.rank} ${state.adminOfficer.fullName} ➔ ${state.adminOfficer.commissionName}`;
+      recentTimeText.textContent = `Asignado: ${state.adminOfficer.timestamp || 'Hoy'}`;
+
+      renderDeploymentPanel();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    /**
+     * Navegación hacia Módulo 1 - Formulario de Registro
+     */
+    function showModuleRegistration() {
+      moduleDeploymentCard.classList.add("hidden");
+      moduleRegistrationCard.classList.remove("hidden");
+      mainContainer.classList.add("compact");
+
+      moduleBadge.textContent = "Módulo 1: Registro";
+      moduleBadge.style.borderColor = "var(--accent-gold)";
+      moduleBadge.style.color = "var(--accent-gold)";
+
+      renderCommissionDropdown();
+
+      if (state.adminOfficer && !state.isEditing) {
+        lockRegistrationForm(state.adminOfficer);
+      } else if (!state.adminOfficer) {
+        resetFormToInitial();
+        fullNameInput.focus();
+      }
+
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    /**
+     * Manejador del Formulario: Registro o Modificación
+     */
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      const rank = rankSelect.value.trim();
+      const fullName = fullNameInput.value.trim().toUpperCase();
+      const commissionId = commissionSelect.value;
+      const currentAdmin = state.adminOfficer;
+
+      // Validación de campos obligatorios
+      if (!rank) {
+        showAlert("Debe seleccionar el Grado Militar del Oficial Administrador.");
+        rankSelect.focus();
+        return;
+      }
+
+      if (!fullName) {
+        showAlert("Debe ingresar el Nombre Completo del Oficial Administrador.");
+        fullNameInput.focus();
+        return;
+      }
+
+      if (!commissionId) {
+        showAlert("Debe seleccionar una comisión de destino.");
+        commissionSelect.focus();
+        return;
+      }
+
+      // CASO 1: EL ADMINISTRADOR ESTÁ MODIFICANDO SUS CAMPOS
+      if (state.isEditing && currentAdmin) {
+        const oldCommissionId = currentAdmin.commissionId;
+
+        // Si cambió de comisión, verificar cupo en la nueva
+        if (commissionId !== oldCommissionId) {
+          if (!state.quotas[commissionId] || state.quotas[commissionId] <= 0) {
+            showAlert("La nueva comisión seleccionada no tiene cupos disponibles.");
+            return;
+          }
+
+          // Liberar cupo anterior y ocupar el nuevo
+          state.quotas[oldCommissionId] = (state.quotas[oldCommissionId] || 0) + 1;
+          state.quotas[commissionId] -= 1;
+          state.assignedOfficers[oldCommissionId] = (state.assignedOfficers[oldCommissionId] || []).filter(o => o.id !== currentAdmin.id);
+        }
+
+        const com = COMMISSIONS_DATA.find(c => c.id === commissionId);
+        const commissionName = com ? com.name : commissionId;
+
+        const updatedAdmin = {
+          ...currentAdmin,
+          rank: rank,
+          fullName: fullName,
+          commissionId: commissionId,
+          commissionName: commissionName,
+          timestamp: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        };
+
+        state.adminOfficer = updatedAdmin;
+        if (!state.assignedOfficers[commissionId]) state.assignedOfficers[commissionId] = [];
+        const existingIdx = state.assignedOfficers[commissionId].findIndex(o => o.id === updatedAdmin.id);
+        if (existingIdx >= 0) {
+          state.assignedOfficers[commissionId][existingIdx] = updatedAdmin;
+        } else {
+          state.assignedOfficers[commissionId].push(updatedAdmin);
+        }
+
+        const regIdx = state.registeredOfficers.findIndex(o => o.id === updatedAdmin.id);
+        if (regIdx >= 0) {
+          state.registeredOfficers[regIdx] = updatedAdmin;
+        } else {
+          state.registeredOfficers.push(updatedAdmin);
+        }
+
+        state.isEditing = false;
+
+        // Persistir en Local Storage
+        saveLogisticDataToLocalStorage();
+
+        // Notificar en tiempo real al servidor y otros usuarios
+        emitRealTime('update_admin', {
+          id: updatedAdmin.id,
+          rank: updatedAdmin.rank,
+          fullName: updatedAdmin.fullName,
+          commissionId: updatedAdmin.commissionId,
+          oldCommissionId: oldCommissionId
+        });
+
+        renderCommissionDropdown();
+        renderDeploymentPanel();
+        showModuleDeployment();
+        showAlert("Modificaciones guardadas en Local Storage y actualizadas en el Panel de Despliegue.", "success");
+        return;
+      }
+
+      // CASO 2: REGISTRO DE OFICIAL EN EL FORMULARIO (MÓDULO 3)
+      // Verificación estricta de disponibilidad de cupo (BLOQUEO TÁCTICO)
+      const currentQuota = state.quotas[commissionId];
+      if (currentQuota <= 0) {
+        showAlert("BLOQUEO TÁCTICO: La comisión seleccionada no tiene cupos disponibles.");
+        renderCommissionDropdown();
+        return;
+      }
+
+      const commissionObj = COMMISSIONS_DATA.find(c => c.id === commissionId);
+      const commissionName = commissionObj ? commissionObj.name : "Comisión";
+
+      // 1. Restar 1 al cupo de la comisión seleccionada
+      state.quotas[commissionId] -= 1;
+
+      // 2. Crear objeto del nuevo oficial registrado
+      const newOfficer = {
+        id: "oficial_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5),
+        rank: rank,
+        fullName: fullName,
+        commissionId: commissionId,
+        commissionName: commissionName,
+        role: (!state.adminOfficer && state.registeredOfficers.length === 0) ? "ADMINISTRADOR" : "OFICIAL",
+        timestamp: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      };
+
+      if (!state.adminOfficer) {
+        state.adminOfficer = newOfficer;
+      }
+      state.registeredOfficers.push(newOfficer);
+      if (!state.assignedOfficers[commissionId]) {
+        state.assignedOfficers[commissionId] = [];
+      }
+      state.assignedOfficers[commissionId].push(newOfficer);
+
+      // 3. MÓDULO 3: Guardar inmediatamente en Local Storage
+      saveLogisticDataToLocalStorage();
+
+      // 4. Emitir al servidor y clientes en tiempo real
+      emitRealTime('register_admin', newOfficer);
+
+      // 5. Actualizar interfaz: reconstruir dropdown con cupos y tarjetas de comisiones
+      renderCommissionDropdown();
+      renderDeploymentPanel();
+
+      // Limpiar campos del formulario para permitir nuevos registros
+      rankSelect.value = "";
+      fullNameInput.value = "";
+      commissionSelect.value = "";
+
+      // Habilitar botón para navegar al Panel de Despliegue
+      if (btnReturnToDeployment) {
+        btnReturnToDeployment.style.display = "inline-flex";
+      }
+
+      // Actualizar banner de asignación reciente
+      if (recentBanner) {
+        recentBanner.style.display = "flex";
+        if (recentOfficerText) recentOfficerText.textContent = `${newOfficer.rank} ${newOfficer.fullName} ➔ ${newOfficer.commissionName}`;
+        if (recentTimeText) recentTimeText.textContent = `Registrado: ${newOfficer.timestamp}`;
+      }
+
+      alertFeedback.style.display = "none";
+      showAlert(`Oficial ${newOfficer.rank} ${newOfficer.fullName} registrado y guardado exitosamente en Local Storage.`, "success");
+    });
+
+    // Eventos de botones
+    btnBackToRegister.addEventListener("click", showModuleRegistration);
+    btnReturnToDeployment.addEventListener("click", showModuleDeployment);
+
+    btnStartEdit.addEventListener("click", startEditingRegistration);
+    btnCancelEdit.addEventListener("click", cancelEditingRegistration);
+    btnDeleteRecord.addEventListener("click", openDeleteAdminModal);
+
+    btnBannerEdit.addEventListener("click", () => {
+      showModuleRegistration();
+      startEditingRegistration();
+    });
+
+    btnBannerDelete.addEventListener("click", openDeleteAdminModal);
+
+    // Botón Cerrar Sesión en el Panel de Despliegue: Retorna al Módulo 1: Registro
+    btnLogout.addEventListener("click", function () {
+      showModuleRegistration();
+      showAlert("Sesión cerrada. Ha retornado al Módulo 1: Registro.", "success");
+    });
+
+    /**
+     * FUNCIÓN: Generar y actualizar el resumen detallado del Panel de Despliegue para el Reporte PDF
+     */
+    function generateDeploymentDetailedSummary() {
+      if (!state.adminOfficer) return;
+
+      const admin = state.adminOfficer;
+      const now = new Date();
+      const dateFormatted = now.toLocaleDateString('es-ES', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      const timeFormatted = now.toLocaleTimeString('es-ES', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+
+      // Metadatos
+      rptAdminName.textContent = admin.fullName;
+      rptAdminRank.textContent = admin.rank;
+      rptAdminCommission.textContent = admin.commissionName || 'No especificada';
+      rptTimestamp.textContent = `${dateFormatted.toUpperCase()}, ${timeFormatted}`;
+      rptDocCode.textContent = `INF-DESPL-${now.getFullYear()}-${admin.id ? admin.id.substring(0, 8).toUpperCase() : 'ADM01'}`;
+      rptOnlineUsers.textContent = `${state.onlineUsers || 1} Activo(s)`;
+      updateAllEscudos();
+
+      // Totales
+      let totalAuthorized = 0;
+      let totalRemaining = 0;
+      let totalOccupied = 0;
+
+      COMMISSIONS_DATA.forEach(com => {
+        const initial = com.maxQuota;
+        const remaining = typeof state.quotas[com.id] === 'number' ? state.quotas[com.id] : initial;
+        const occupied = Math.max(0, initial - remaining);
+
+        totalAuthorized += initial;
+        totalRemaining += remaining;
+        totalOccupied += occupied;
+      });
+
+      rptTotalCapacity.textContent = totalAuthorized;
+      rptTotalAssigned.textContent = totalOccupied;
+      rptTotalRemaining.textContent = totalRemaining;
+      
+      const occupancyPct = totalAuthorized > 0 ? ((totalOccupied / totalAuthorized) * 100).toFixed(1) : "0.0";
+      rptOccupancyRate.textContent = `${occupancyPct}%`;
+
+      // Firmas
+      rptSignAdminName.textContent = `${admin.rank} ${admin.fullName}`;
+      rptSignAdminRank.textContent = `Oficial Administrador General - Registrado el ${admin.timestamp || 'Fecha actual'}`;
+
+      // Filas de la Tabla Detallada
+      rptTableBody.innerHTML = '';
+      COMMISSIONS_DATA.forEach((com, idx) => {
+        const initial = com.maxQuota;
+        const remaining = typeof state.quotas[com.id] === 'number' ? state.quotas[com.id] : initial;
+        const assignedList = state.assignedOfficers[com.id] || [];
+        const occupied = Math.max(0, initial - remaining);
+
+        const tr = document.createElement('tr');
+
+        // Determinar estado de la ventana
+        let badgeHtml = '';
+        if (remaining === 0) {
+          badgeHtml = '<span class="report-badge-status report-badge-depleted">COMPLETA</span>';
+        } else if (occupied > 0) {
+          badgeHtml = '<span class="report-badge-status report-badge-active">ASIGNADA</span>';
+        } else {
+          badgeHtml = '<span class="report-badge-status report-badge-free">DISPONIBLE</span>';
+        }
+
+        // Determinar personal asignado
+        let officersHtml = '';
+        if (assignedList.length > 0) {
+          officersHtml = assignedList.map(o => `<strong>👑 ${o.rank} ${o.fullName}</strong> <span style="font-size:0.675rem; color:#475569;">(Admin)</span>`).join('<br/>');
+        } else {
+          officersHtml = '<span style="color: #94a3b8; font-style: italic;">Sin personal asignado</span>';
+        }
+
+        tr.innerHTML = `
+          <td style="text-align: center; font-weight: bold;">${idx + 1}</td>
+          <td><strong>${com.name}</strong></td>
+          <td style="text-align: center; font-weight: 700;">${initial}</td>
+          <td style="text-align: center; font-weight: 700; color: ${remaining === 0 ? '#dc2626' : '#059669'};">${remaining}</td>
+          <td style="text-align: center; font-weight: 700;">${occupied}</td>
+          <td style="text-align: center;">${badgeHtml}</td>
+          <td>${officersHtml}</td>
+        `;
+
+        rptTableBody.appendChild(tr);
+      });
+    }
+
+    /**
+     * FUNCIÓN: Abrir modal con vista previa del informe y opción a imprimir en PDF
+     */
+    function openPrintReportModal() {
+      if (!state.adminOfficer) {
+        showAlert("ACCESO RESTRINGIDO: Solamente una vez registrado como Administrador podrá imprimir el Panel de Despliegue en PDF.");
+        return;
+      }
+      generateDeploymentDetailedSummary();
+      printReportModal.classList.remove("hidden");
+    }
+
+    /**
+     * FUNCIÓN: Cerrar modal de impresión
+     */
+    function closePrintReportModal() {
+      printReportModal.classList.add("hidden");
+    }
+
+    /**
+     * FUNCIÓN: Ejecutar impresión en PDF del Panel de Despliegue
+     */
+    function executePrintDeploymentPdf() {
+      if (!state.adminOfficer) {
+        showAlert("ACCESO RESTRINGIDO: No existe un Oficial Administrador registrado para imprimir.");
+        return;
+      }
+      generateDeploymentDetailedSummary();
+      printReportModal.classList.remove("hidden");
+      
+      // Breve pausa para asegurar renderizado completo antes de disparar diálogo nativo de PDF/impresión
+      setTimeout(() => {
+        window.print();
+      }, 150);
+    }
+
+    // Eventos para la función de imprimir en PDF
+    if (btnPrintDeploymentPdf) btnPrintDeploymentPdf.addEventListener("click", executePrintDeploymentPdf);
+    if (btnBannerPrintPdf) btnBannerPrintPdf.addEventListener("click", executePrintDeploymentPdf);
+    if (btnPrintModalExecute) btnPrintModalExecute.addEventListener("click", () => window.print());
+    if (btnPrintModalClose) btnPrintModalClose.addEventListener("click", closePrintReportModal);
+    if (btnPrintModalCloseX) btnPrintModalCloseX.addEventListener("click", closePrintReportModal);
+
+    /* ==========================================================================
+       SISTEMA DE PERSONALIZACIÓN TÁCTICA: ESCUDO, FONDOS Y CONTRASTE SUTIL
+       ========================================================================== */
+    const STORAGE_KEY_THEME = "militar_app_theme_v2";
+
+    // Presets oficiales de Escudos en SVG de alta resolución
+    const ESCUDOS_PRESET_DATA = {
+      dorado: {
+        id: "dorado",
+        name: "Dorado Imperial",
+        desc: "Águila heráldica, laureles y sables de mando",
+        svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="goldG1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#fef08a"/><stop offset="50%" stop-color="#eab308"/><stop offset="100%" stop-color="#854d0e"/></linearGradient><linearGradient id="goldG2" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#1e293b"/><stop offset="100%" stop-color="#0f172a"/></linearGradient></defs><circle cx="50" cy="50" r="46" fill="url(#goldG2)" stroke="url(#goldG1)" stroke-width="3.5"/><circle cx="50" cy="50" r="41" fill="none" stroke="#ca8a04" stroke-width="1" stroke-dasharray="2,2"/><path d="M26 26 L74 74 M74 26 L26 74" stroke="#fde047" stroke-width="2.5" stroke-linecap="round"/><path d="M50 18 L76 34 L66 74 L50 86 L34 74 L24 34 Z" fill="#141c26" stroke="url(#goldG1)" stroke-width="2.5"/><path d="M50 26 L53 34 L62 34 L55 40 L58 48 L50 43 L42 48 L45 40 L38 34 L47 34 Z" fill="url(#goldG1)" stroke="#78350f" stroke-width="0.5"/><path d="M30 62 Q26 78 50 83 Q74 78 70 62" fill="none" stroke="url(#goldG1)" stroke-width="3" stroke-linecap="round"/><circle cx="50" cy="64" r="5" fill="#f59e0b" stroke="#fef08a" stroke-width="1"/></svg>`
+      },
+      operaciones: {
+        id: "operaciones",
+        name: "Fuerzas Especiales",
+        desc: "Daga táctica, alas de asalto y estrella azul",
+        svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="opsG1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#7dd3fc"/><stop offset="50%" stop-color="#0284c7"/><stop offset="100%" stop-color="#0369a1"/></linearGradient></defs><circle cx="50" cy="50" r="46" fill="#080d14" stroke="url(#opsG1)" stroke-width="3.5"/><path d="M50 16 L78 30 L68 76 L50 88 L32 76 L22 30 Z" fill="#0f172a" stroke="url(#opsG1)" stroke-width="2.5"/><path d="M24 45 Q36 34 50 40 Q64 34 76 45 Q66 58 50 54 Q34 58 24 45 Z" fill="#0369a1" opacity="0.85"/><path d="M50 24 L54 58 L50 78 L46 58 Z" fill="#f8fafc" stroke="#38bdf8" stroke-width="1"/><line x1="38" y1="58" x2="62" y2="58" stroke="#38bdf8" stroke-width="3" stroke-linecap="round"/><circle cx="50" cy="58" r="3.5" fill="#fde047"/></svg>`
+      },
+      infanteria: {
+        id: "infanteria",
+        name: "Infantería Blindada",
+        desc: "Fortaleza militar, sablas y corona de laureles",
+        svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="infG1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#86efac"/><stop offset="50%" stop-color="#16a34a"/><stop offset="100%" stop-color="#14532d"/></linearGradient></defs><circle cx="50" cy="50" r="46" fill="#07130b" stroke="url(#infG1)" stroke-width="3.5"/><path d="M50 18 L76 30 L66 74 L50 86 L34 74 L24 30 Z" fill="#112215" stroke="url(#infG1)" stroke-width="2.5"/><rect x="42" y="38" width="16" height="28" fill="#15803d" stroke="#86efac" stroke-width="1.5"/><rect x="40" y="34" width="20" height="6" fill="#166534" stroke="#86efac" stroke-width="1"/><path d="M44 31 L44 34 M50 31 L50 34 M56 31 L56 34" stroke="#86efac" stroke-width="2"/><path d="M48 54 Q50 48 52 54 L52 66 L48 66 Z" fill="#052e16"/><path d="M26 40 L74 68 M74 40 L26 68" stroke="#fde047" stroke-width="2" stroke-linecap="round"/></svg>`
+      },
+      condor: {
+        id: "condor",
+        name: "Cóndor & Sol Mayor",
+        desc: "Alas heráldicas, sol radiante y blasón de mando",
+        svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="brzG1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#fed7aa"/><stop offset="50%" stop-color="#ea580c"/><stop offset="100%" stop-color="#9a3412"/></linearGradient></defs><circle cx="50" cy="50" r="46" fill="#140e0a" stroke="url(#brzG1)" stroke-width="3.5"/><circle cx="50" cy="38" r="14" fill="#fbbf24" opacity="0.9"/><path d="M18 36 Q34 22 50 30 Q66 22 82 36 Q68 44 50 40 Q32 44 18 36 Z" fill="#ea580c"/><path d="M50 32 L54 42 L64 44 L56 52 L58 62 L50 56 L42 62 L44 52 L36 44 L46 42 Z" fill="#fef08a" stroke="#b45309" stroke-width="1"/><path d="M50 54 L68 76 L50 86 L32 76 Z" fill="#7c2d12" stroke="url(#brzG1)" stroke-width="2"/></svg>`
+      }
+    };
+
+    // Presets de Fondos Tácticos Vectoriales y Sutiles
+    const BG_PRESET_DATA = {
+      cuadricula: {
+        id: "cuadricula",
+        name: "Cuadrícula de Mando",
+        desc: "Malla milimétrica con retículas de coordenadas",
+        url: "data:image/svg+xml,%3Csvg width='40' height='40' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='g' width='40' height='40' patternUnits='userSpaceOnUse'%3E%3Cpath d='M 40 0 L 0 0 0 40' fill='none' stroke='rgba(201,151,56,0.35)' stroke-width='0.75'/%3E%3Cpath d='M 20 16 L 20 24 M 16 20 L 24 20' stroke='rgba(201,151,56,0.5)' stroke-width='0.75'/%3E%3Ccircle cx='40' cy='40' r='1.5' fill='rgba(201,151,56,0.6)'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='100%25' height='100%25' fill='url(%23g)'/%3E%3C/svg%3E"
+      },
+      topografico: {
+        id: "topografico",
+        name: "Mapa Topográfico",
+        desc: "Curvas de nivel de elevación y terreno táctico",
+        url: "data:image/svg+xml,%3Csvg width='120' height='120' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M 0 30 Q 30 15 60 30 T 120 30 M 0 60 Q 30 40 60 60 T 120 60 M 0 90 Q 30 75 60 90 T 120 90 M 30 0 Q 45 30 30 60 T 30 120 M 75 0 Q 90 40 75 80 T 75 120' fill='none' stroke='rgba(110,231,183,0.35)' stroke-width='0.85'/%3E%3C/svg%3E"
+      },
+      hexagonal: {
+        id: "hexagonal",
+        name: "Malla Hexagonal",
+        desc: "Blindaje de nido de abeja con radar sutil",
+        url: "data:image/svg+xml,%3Csvg width='56' height='96' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M 28 0 L 56 16 L 56 48 L 28 64 L 0 48 L 0 16 Z M 28 64 L 56 80 L 56 112 L 28 128 L 0 112 L 0 80 Z' fill='none' stroke='rgba(56,189,248,0.32)' stroke-width='0.8'/%3E%3Ccircle cx='28' cy='32' r='1.2' fill='rgba(56,189,248,0.5)'/%3E%3C/svg%3E"
+      },
+      fibra: {
+        id: "fibra",
+        name: "Fibra de Carbono",
+        desc: "Tejido táctico balístico de alta densidad",
+        url: "data:image/svg+xml,%3Csvg width='16' height='16' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='8' height='8' fill='rgba(255,255,255,0.06)'/%3E%3Crect x='8' y='8' width='8' height='8' fill='rgba(255,255,255,0.06)'/%3E%3Cpath d='M 0 0 L 8 8 M 8 0 L 16 8 M 0 8 L 8 16 M 8 8 L 16 16' stroke='rgba(0,0,0,0.6)' stroke-width='1'/%3E%3C/svg%3E"
+      },
+      camuflaje: {
+        id: "camuflaje",
+        name: "Camuflaje Nocturno",
+        desc: "Polígonos de camuflaje en tonos pizarra y oliva",
+        url: "data:image/svg+xml,%3Csvg width='100' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='0,0 40,0 20,40' fill='rgba(45,106,79,0.22)'/%3E%3Cpolygon points='50,20 90,10 70,60' fill='rgba(201,151,56,0.18)'/%3E%3Cpolygon points='10,60 50,70 30,100' fill='rgba(30,41,59,0.35)'/%3E%3Cpolygon points='70,70 100,50 90,100' fill='rgba(27,67,50,0.25)'/%3E%3C/svg%3E"
+      },
+      minimalista: {
+        id: "minimalista",
+        name: "Gradiente Slate",
+        desc: "Fondo limpio con viñeta radial oscura",
+        url: ""
+      }
+    };
+
+    // Halos de Contraste para el Escudo
+    const HALO_STYLES = {
+      gold: { color: "#c99738", glow: "rgba(201, 151, 56, 0.45)" },
+      emerald: { color: "#10b981", glow: "rgba(16, 185, 129, 0.45)" },
+      cyan: { color: "#38bdf8", glow: "rgba(56, 189, 248, 0.45)" },
+      silver: { color: "#e2e8f0", glow: "rgba(226, 232, 240, 0.45)" },
+      none: { color: "transparent", glow: "none" }
+    };
+
+    // Configuración por defecto
+    const defaultThemeConfig = {
+      escudoType: "preset", // 'preset' | 'custom' | 'default'
+      escudoPresetId: "dorado",
+      escudoCustomData: "", // data URL base64 o URL http
+      escudoHalo: "gold",
+
+      bgType: "preset", // 'preset' | 'custom' | 'default'
+      bgPresetId: "cuadricula",
+      bgCustomData: "", // data URL base64 o URL http
+      bgOpacity: 18,
+      bgBlur: 0,
+      bgColor: "#0a0f16",
+      bgBlend: "overlay"
+    };
+
+    let themeConfig = Object.assign({}, defaultThemeConfig);
+
+    // Elementos DOM del Personalizador
+    const appBgTexture = document.getElementById("appBgTexture");
+    const appBackgroundLayer = document.getElementById("appBackgroundLayer");
+    const appHeaderEscudo = document.getElementById("appHeaderEscudo");
+    const module1Escudo = document.getElementById("module1Escudo");
+    const module2Escudo = document.getElementById("module2Escudo");
+    const rptEscudoLeft = document.getElementById("rptEscudoLeft");
+    const rptEscudoRight = document.getElementById("rptEscudoRight");
+
+    const themeCustomizerModal = document.getElementById("themeCustomizerModal");
+    const btnOpenThemeModal = document.getElementById("btnOpenThemeModal");
+    const btnOpenThemeModalDeployment = document.getElementById("btnOpenThemeModalDeployment");
+    const btnThemeModalCloseX = document.getElementById("btnThemeModalCloseX");
+    const btnApplyThemeClose = document.getElementById("btnApplyThemeClose");
+    const btnResetThemeDefaults = document.getElementById("btnResetThemeDefaults");
+
+    const tabBtnEscudo = document.getElementById("tabBtnEscudo");
+    const tabBtnFondo = document.getElementById("tabBtnFondo");
+    const panelEscudo = document.getElementById("panelEscudo");
+    const panelFondo = document.getElementById("panelFondo");
+
+    const escudoLivePreview = document.getElementById("escudoLivePreview");
+    const escudoPreviewLabel = document.getElementById("escudoPreviewLabel");
+    const btnResetEscudoOnly = document.getElementById("btnResetEscudoOnly");
+    const escudoDropzone = document.getElementById("escudoDropzone");
+    const escudoFileInput = document.getElementById("escudoFileInput");
+    const escudoUrlInput = document.getElementById("escudoUrlInput");
+    const btnApplyEscudoUrl = document.getElementById("btnApplyEscudoUrl");
+    const escudoPresetsGrid = document.getElementById("escudoPresetsGrid");
+    const haloSelectorRow = document.getElementById("haloSelectorRow");
+
+    const bgDropzone = document.getElementById("bgDropzone");
+    const bgFileInput = document.getElementById("bgFileInput");
+    const bgUrlInput = document.getElementById("bgUrlInput");
+    const btnApplyBgUrl = document.getElementById("btnApplyBgUrl");
+    const bgPresetsGrid = document.getElementById("bgPresetsGrid");
+    const sliderBgOpacity = document.getElementById("sliderBgOpacity");
+    const valBgOpacity = document.getElementById("valBgOpacity");
+    const sliderBgBlur = document.getElementById("sliderBgBlur");
+    const valBgBlur = document.getElementById("valBgBlur");
+    const valBgColor = document.getElementById("valBgColor");
+    const colorSwatchesRow = document.getElementById("colorSwatchesRow");
+    const customBgColorInput = document.getElementById("customBgColorInput");
+    const blendModeRow = document.getElementById("blendModeRow");
+
+    /**
+     * Genera el HTML interno para renderizar el escudo según configuración actual
+     */
+    function getEscudoHtml(sizeClass = "escudo-header-size", isReport = false) {
+      if (themeConfig.escudoType === "custom" && themeConfig.escudoCustomData) {
+        return `<div class="escudo-img-wrap ${sizeClass}"><img src="${themeConfig.escudoCustomData}" alt="Escudo Oficial" referrerpolicy="no-referrer" /></div>`;
+      }
+      if (themeConfig.escudoType === "preset" && ESCUDOS_PRESET_DATA[themeConfig.escudoPresetId]) {
+        const svgContent = ESCUDOS_PRESET_DATA[themeConfig.escudoPresetId].svg;
+        return `<div class="escudo-img-wrap ${sizeClass}">${svgContent}</div>`;
+      }
+      // Fallback institucional por defecto
+      if (isReport) {
+        return `<div class="escudo-img-wrap ${sizeClass}"><span style="font-size: 1.8rem;">🛡️</span></div>`;
+      }
+      return `<div class="escudo-img-wrap ${sizeClass}"><span style="font-size: 1.2rem;">🛡️</span></div>`;
+    }
+
+    /**
+     * Actualiza todos los contenedores de escudo en la interfaz y en el reporte PDF
+     */
+    function updateAllEscudos() {
+      // 1. Cabecera principal
+      if (appHeaderEscudo) {
+        appHeaderEscudo.innerHTML = getEscudoHtml("escudo-header-size");
+      }
+      // 2. Módulo 1 (Registro)
+      if (module1Escudo) {
+        module1Escudo.innerHTML = getEscudoHtml("escudo-card-size");
+      }
+      // 3. Módulo 2 (Despliegue)
+      if (module2Escudo) {
+        module2Escudo.innerHTML = getEscudoHtml("escudo-card-size");
+      }
+      // 4. Reporte Oficial PDF (ambos lados de la cabecera)
+      if (rptEscudoLeft) {
+        rptEscudoLeft.innerHTML = getEscudoHtml("escudo-report-size", true);
+      }
+      if (rptEscudoRight) {
+        rptEscudoRight.innerHTML = getEscudoHtml("escudo-report-size", true);
+      }
+      // 5. Vista previa del modal
+      if (escudoLivePreview) {
+        escudoLivePreview.innerHTML = getEscudoHtml("escudo-preview-size");
+      }
+      if (escudoPreviewLabel) {
+        if (themeConfig.escudoType === "custom") {
+          escudoPreviewLabel.textContent = "Escudo Personalizado (Cargado)";
+        } else if (ESCUDOS_PRESET_DATA[themeConfig.escudoPresetId]) {
+          escudoPreviewLabel.textContent = `Preset: ${ESCUDOS_PRESET_DATA[themeConfig.escudoPresetId].name}`;
+        } else {
+          escudoPreviewLabel.textContent = "Escudo Institucional";
+        }
+      }
+    }
+
+    /**
+     * Aplica la configuración de tema, contraste y fondo a los elementos del DOM
+     */
+    function applyTheme(cfg, persist = true) {
+      themeConfig = Object.assign({}, cfg);
+
+      // 1. Color base de fondo de la app y del layer
+      const bgColor = themeConfig.bgColor || "#0a0f16";
+      document.body.style.backgroundColor = bgColor;
+      if (appBackgroundLayer) appBackgroundLayer.style.backgroundColor = bgColor;
+      if (valBgColor) valBgColor.textContent = bgColor;
+      if (customBgColorInput) customBgColorInput.value = bgColor;
+
+      // 2. Imagen de fondo táctica
+      let bgImageUrl = "";
+      if (themeConfig.bgType === "custom" && themeConfig.bgCustomData) {
+        bgImageUrl = `url("${themeConfig.bgCustomData}")`;
+      } else if (themeConfig.bgType === "preset" && BG_PRESET_DATA[themeConfig.bgPresetId]) {
+        const pUrl = BG_PRESET_DATA[themeConfig.bgPresetId].url;
+        bgImageUrl = pUrl ? `url("${pUrl}")` : "none";
+      } else {
+        bgImageUrl = "none";
+      }
+
+      if (appBgTexture) {
+        appBgTexture.style.backgroundImage = bgImageUrl;
+        appBgTexture.style.opacity = (themeConfig.bgOpacity / 100).toString();
+        appBgTexture.style.mixBlendMode = themeConfig.bgBlend || "overlay";
+        appBgTexture.style.filter = `blur(${themeConfig.bgBlur || 0}px) contrast(1.15)`;
+      }
+
+      // 3. Halo y resplandor de contraste del escudo
+      const haloKey = themeConfig.escudoHalo || "gold";
+      const haloStyle = HALO_STYLES[haloKey] || HALO_STYLES.gold;
+      document.documentElement.style.setProperty("--escudo-halo-color", haloStyle.color);
+      document.documentElement.style.setProperty("--escudo-halo-glow", haloStyle.glow);
+
+      // 4. Actualizar todos los escudos
+      updateAllEscudos();
+
+      // 5. Actualizar indicadores de controles en el modal
+      if (sliderBgOpacity) {
+        sliderBgOpacity.value = themeConfig.bgOpacity;
+        if (valBgOpacity) valBgOpacity.textContent = `${themeConfig.bgOpacity}%`;
+      }
+      if (sliderBgBlur) {
+        sliderBgBlur.value = themeConfig.bgBlur;
+        if (valBgBlur) valBgBlur.textContent = `${themeConfig.bgBlur} px`;
+      }
+
+      // Sincronizar tarjetas activas en los grids de presets
+      document.querySelectorAll("#escudoPresetsGrid .preset-card").forEach(el => {
+        el.classList.toggle("active", themeConfig.escudoType === "preset" && el.dataset.id === themeConfig.escudoPresetId);
+      });
+      document.querySelectorAll("#bgPresetsGrid .preset-card").forEach(el => {
+        el.classList.toggle("active", themeConfig.bgType === "preset" && el.dataset.id === themeConfig.bgPresetId);
+      });
+      document.querySelectorAll("#haloSelectorRow .halo-chip").forEach(el => {
+        el.classList.toggle("active", el.dataset.halo === haloKey);
+      });
+      document.querySelectorAll("#blendModeRow .halo-chip").forEach(el => {
+        el.classList.toggle("active", el.dataset.blend === themeConfig.bgBlend);
+      });
+      document.querySelectorAll("#colorSwatchesRow .color-swatch-btn").forEach(el => {
+        el.classList.toggle("active", el.dataset.color === bgColor);
+      });
+
+      // 6. Persistir en localStorage
+      if (persist) {
+        try {
+          localStorage.setItem(STORAGE_KEY_THEME, JSON.stringify(themeConfig));
+        } catch (e) {
+          console.warn("No se pudo guardar tema en localStorage", e);
+        }
+      }
+    }
+
+    /**
+     * Cargar tema guardado desde localStorage
+     */
+    function loadSavedTheme() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY_THEME);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          applyTheme(Object.assign({}, defaultThemeConfig, parsed), false);
+          return;
+        }
+      } catch (e) {
+        console.error(e);
+      }
+      applyTheme(defaultThemeConfig, false);
+    }
+
+    /**
+     * Construcción dinámica y eventos del Modal de Personalización
+     */
+    function setupThemeCustomizer() {
+      // 1. Inyectar tarjetas de presets de Escudos
+      if (escudoPresetsGrid) {
+        escudoPresetsGrid.innerHTML = "";
+        Object.values(ESCUDOS_PRESET_DATA).forEach(preset => {
+          const card = document.createElement("div");
+          card.className = `preset-card ${themeConfig.escudoType === 'preset' && themeConfig.escudoPresetId === preset.id ? 'active' : ''}`;
+          card.dataset.id = preset.id;
+          card.innerHTML = `
+            <div class="preset-card-icon">${preset.svg}</div>
+            <div class="preset-card-title">${preset.name}</div>
+            <span style="font-size:0.65rem; color:#94a3b8;">${preset.desc}</span>
+          `;
+          card.addEventListener("click", () => {
+            themeConfig.escudoType = "preset";
+            themeConfig.escudoPresetId = preset.id;
+            applyTheme(themeConfig, true);
+          });
+          escudoPresetsGrid.appendChild(card);
+        });
+      }
+
+      // 2. Inyectar tarjetas de presets de Fondos
+      if (bgPresetsGrid) {
+        bgPresetsGrid.innerHTML = "";
+        Object.values(BG_PRESET_DATA).forEach(preset => {
+          const card = document.createElement("div");
+          card.className = `preset-card ${themeConfig.bgType === 'preset' && themeConfig.bgPresetId === preset.id ? 'active' : ''}`;
+          card.dataset.id = preset.id;
+          
+          let previewBgStyle = preset.url ? `background-image: url('${preset.url}'); background-size: cover;` : `background: radial-gradient(circle, #1e293b, #0f172a);`;
+          card.innerHTML = `
+            <div class="preset-card-icon" style="border-radius: 6px; border: 1px solid #334155; ${previewBgStyle}"></div>
+            <div class="preset-card-title">${preset.name}</div>
+            <span style="font-size:0.65rem; color:#94a3b8;">${preset.desc}</span>
+          `;
+          card.addEventListener("click", () => {
+            themeConfig.bgType = "preset";
+            themeConfig.bgPresetId = preset.id;
+            applyTheme(themeConfig, true);
+          });
+          bgPresetsGrid.appendChild(card);
+        });
+      }
+
+      // 3. Cambio de pestañas
+      if (tabBtnEscudo && tabBtnFondo) {
+        tabBtnEscudo.addEventListener("click", () => {
+          tabBtnEscudo.classList.add("active");
+          tabBtnFondo.classList.remove("active");
+          panelEscudo.classList.remove("hidden");
+          panelFondo.classList.add("hidden");
+        });
+        tabBtnFondo.addEventListener("click", () => {
+          tabBtnFondo.classList.add("active");
+          tabBtnEscudo.classList.remove("active");
+          panelFondo.classList.remove("hidden");
+          panelEscudo.classList.add("hidden");
+        });
+      }
+
+      // 4. Subida de imagen de Escudo desde archivo local
+      if (escudoDropzone && escudoFileInput) {
+        escudoDropzone.addEventListener("click", () => escudoFileInput.click());
+        escudoDropzone.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          escudoDropzone.style.borderColor = "var(--accent-gold)";
+        });
+        escudoDropzone.addEventListener("dragleave", () => {
+          escudoDropzone.style.borderColor = "";
+        });
+        escudoDropzone.addEventListener("drop", (e) => {
+          e.preventDefault();
+          escudoDropzone.style.borderColor = "";
+          if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            handleEscudoFile(e.dataTransfer.files[0]);
+          }
+        });
+        escudoFileInput.addEventListener("change", (e) => {
+          if (e.target.files && e.target.files[0]) {
+            handleEscudoFile(e.target.files[0]);
+          }
+        });
+      }
+
+      function handleEscudoFile(file) {
+        if (!file.type.startsWith("image/")) {
+          alert("Por favor seleccione un archivo de imagen válido (PNG, JPG, SVG, WebP).");
+          return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+          alert("El archivo es demasiado grande (máximo 5MB).");
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = function (ev) {
+          themeConfig.escudoType = "custom";
+          themeConfig.escudoCustomData = ev.target.result;
+          applyTheme(themeConfig, true);
+        };
+        reader.readAsDataURL(file);
+      }
+
+      // 5. Inserción de imagen de Escudo mediante URL
+      if (btnApplyEscudoUrl && escudoUrlInput) {
+        btnApplyEscudoUrl.addEventListener("click", () => {
+          const url = escudoUrlInput.value.trim();
+          if (!url) return;
+          themeConfig.escudoType = "custom";
+          themeConfig.escudoCustomData = url;
+          applyTheme(themeConfig, true);
+        });
+      }
+
+      // 6. Restablecer solo el escudo
+      if (btnResetEscudoOnly) {
+        btnResetEscudoOnly.addEventListener("click", () => {
+          themeConfig.escudoType = defaultThemeConfig.escudoType;
+          themeConfig.escudoPresetId = defaultThemeConfig.escudoPresetId;
+          themeConfig.escudoCustomData = "";
+          themeConfig.escudoHalo = defaultThemeConfig.escudoHalo;
+          applyTheme(themeConfig, true);
+        });
+      }
+
+      // 7. Subida de imagen de Fondo desde archivo local
+      if (bgDropzone && bgFileInput) {
+        bgDropzone.addEventListener("click", () => bgFileInput.click());
+        bgDropzone.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          bgDropzone.style.borderColor = "var(--accent-gold)";
+        });
+        bgDropzone.addEventListener("dragleave", () => {
+          bgDropzone.style.borderColor = "";
+        });
+        bgDropzone.addEventListener("drop", (e) => {
+          e.preventDefault();
+          bgDropzone.style.borderColor = "";
+          if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            handleBgFile(e.dataTransfer.files[0]);
+          }
+        });
+        bgFileInput.addEventListener("change", (e) => {
+          if (e.target.files && e.target.files[0]) {
+            handleBgFile(e.target.files[0]);
+          }
+        });
+      }
+
+      function handleBgFile(file) {
+        if (!file.type.startsWith("image/")) {
+          alert("Por favor seleccione un archivo de imagen válido.");
+          return;
+        }
+        if (file.size > 8 * 1024 * 1024) {
+          alert("La imagen es demasiado grande (máximo 8MB).");
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = function (ev) {
+          themeConfig.bgType = "custom";
+          themeConfig.bgCustomData = ev.target.result;
+          applyTheme(themeConfig, true);
+        };
+        reader.readAsDataURL(file);
+      }
+
+      // 8. Inserción de imagen de Fondo mediante URL
+      if (btnApplyBgUrl && bgUrlInput) {
+        btnApplyBgUrl.addEventListener("click", () => {
+          const url = bgUrlInput.value.trim();
+          if (!url) return;
+          themeConfig.bgType = "custom";
+          themeConfig.bgCustomData = url;
+          applyTheme(themeConfig, true);
+        });
+      }
+
+      // 9. Deslizador de Opacidad del fondo (Contraste sutil)
+      if (sliderBgOpacity) {
+        sliderBgOpacity.addEventListener("input", (e) => {
+          themeConfig.bgOpacity = parseInt(e.target.value, 10);
+          if (valBgOpacity) valBgOpacity.textContent = `${themeConfig.bgOpacity}%`;
+          if (appBgTexture) appBgTexture.style.opacity = (themeConfig.bgOpacity / 100).toString();
+        });
+        sliderBgOpacity.addEventListener("change", () => {
+          applyTheme(themeConfig, true);
+        });
+      }
+
+      // 10. Deslizador de Desenfoque (Blur)
+      if (sliderBgBlur) {
+        sliderBgBlur.addEventListener("input", (e) => {
+          themeConfig.bgBlur = parseInt(e.target.value, 10);
+          if (valBgBlur) valBgBlur.textContent = `${themeConfig.bgBlur} px`;
+          if (appBgTexture) appBgTexture.style.filter = `blur(${themeConfig.bgBlur}px) contrast(1.15)`;
+        });
+        sliderBgBlur.addEventListener("change", () => {
+          applyTheme(themeConfig, true);
+        });
+      }
+
+      // 11. Paleta de colores base de fondo
+      if (colorSwatchesRow) {
+        colorSwatchesRow.querySelectorAll(".color-swatch-btn").forEach(btn => {
+          btn.addEventListener("click", () => {
+            themeConfig.bgColor = btn.dataset.color;
+            applyTheme(themeConfig, true);
+          });
+        });
+      }
+      if (customBgColorInput) {
+        customBgColorInput.addEventListener("input", (e) => {
+          themeConfig.bgColor = e.target.value;
+          document.body.style.backgroundColor = themeConfig.bgColor;
+          if (appBackgroundLayer) appBackgroundLayer.style.backgroundColor = themeConfig.bgColor;
+          if (valBgColor) valBgColor.textContent = themeConfig.bgColor;
+        });
+        customBgColorInput.addEventListener("change", () => {
+          applyTheme(themeConfig, true);
+        });
+      }
+
+      // 12. Modos de fusión (Blend modes)
+      if (blendModeRow) {
+        blendModeRow.querySelectorAll(".halo-chip").forEach(btn => {
+          btn.addEventListener("click", () => {
+            themeConfig.bgBlend = btn.dataset.blend;
+            applyTheme(themeConfig, true);
+          });
+        });
+      }
+
+      // 13. Selector de Halo de contraste del Escudo
+      if (haloSelectorRow) {
+        haloSelectorRow.querySelectorAll(".halo-chip").forEach(btn => {
+          btn.addEventListener("click", () => {
+            themeConfig.escudoHalo = btn.dataset.halo;
+            applyTheme(themeConfig, true);
+          });
+        });
+      }
+
+      // 14. Abrir y Cerrar Modal de Personalización
+      function openThemeModal(tab = "escudo") {
+        if (themeCustomizerModal) {
+          if (tab === "fondo" && tabBtnFondo) {
+            tabBtnFondo.click();
+          } else if (tabBtnEscudo) {
+            tabBtnEscudo.click();
+          }
+          themeCustomizerModal.classList.remove("hidden");
+        }
+      }
+
+      function closeThemeModal() {
+        if (themeCustomizerModal) {
+          themeCustomizerModal.classList.add("hidden");
+        }
+      }
+
+      if (btnOpenThemeModal) btnOpenThemeModal.addEventListener("click", () => openThemeModal("escudo"));
+      if (btnOpenThemeModalDeployment) btnOpenThemeModalDeployment.addEventListener("click", () => openThemeModal("escudo"));
+      if (btnThemeModalCloseX) btnThemeModalCloseX.addEventListener("click", closeThemeModal);
+      if (btnApplyThemeClose) btnApplyThemeClose.addEventListener("click", closeThemeModal);
+
+      // 15. Restablecer valores de fábrica
+      if (btnResetThemeDefaults) {
+        btnResetThemeDefaults.addEventListener("click", () => {
+          if (confirm("¿Desea restablecer el escudo, los fondos y contrastes a la configuración de fábrica?")) {
+            themeConfig = Object.assign({}, defaultThemeConfig);
+            applyTheme(themeConfig, true);
+          }
+        });
+      }
+    }
+
+    // ==========================================================================
+    // MÓDULO 3 - REQUERIMIENTO 2: Inicialización al cargar la página (DOMContentLoaded)
+    // ==========================================================================
+    document.addEventListener("DOMContentLoaded", function () {
+      // 0. Inicializar Personalización Táctica de Escudo, Fondos y Contraste Sutil
+      setupThemeCustomizer();
+      loadSavedTheme();
+
+      // 1. REQUERIMIENTO 2: Verificar si existen datos guardados en Local Storage y reconstruir:
+      //    a) Rellenar las listas (<ul>) de las 13 tarjetas de comisiones con nombres y grados.
+      //    b) Actualizar los textos de "Cupos restantes" en cada tarjeta.
+      //    c) Actualizar las opciones del selector (Dropdown) inhabilitando comisiones con cupo 0.
+      const hasRecovered = loadLogisticDataFromLocalStorage();
+
+      // 2. Conectar WebSocket en tiempo real si está disponible
+      initWebSocket();
+
+      // 3. Sincronización pasiva con el servidor (ESTRICTO: NUNCA SOBRESCRIBIR NI ELIMINAR LOCAL STORAGE)
+      fetch('/api/state')
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.onlineCount) {
+            state.onlineUsers = data.onlineCount;
+            if (onlineUsersCount) {
+              onlineUsersCount.textContent = `${data.onlineCount} ${data.onlineCount === 1 ? 'en línea' : 'en línea'}`;
+            }
+          }
+          // Si el servidor cuenta con datos y Local Storage estaba totalmente virgen, inicializarlo
+          if (!hasRecovered && data && data.quotas && data.assignedOfficers) {
+            if (data.quotas) state.quotas = data.quotas;
+            if (data.assignedOfficers) state.assignedOfficers = data.assignedOfficers;
+            if (data.adminOfficer) state.adminOfficer = data.adminOfficer;
+            saveLogisticDataToLocalStorage();
+            renderCommissionDropdown();
+            renderDeploymentPanel();
+          }
+        })
+        .catch(() => {
+          // LocalStorage es autoritativo y permanece intacto
+        });
+
+      // 4. Asegurar actualización inicial de la interfaz
+      renderCommissionDropdown();
+      renderDeploymentPanel();
+    });
+  </script>
+</body>
+</html>

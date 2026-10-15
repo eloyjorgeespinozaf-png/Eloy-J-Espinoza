@@ -1,0 +1,6 @@
+{
+  "name": "Registro de Personal Militar - Módulo 1",
+  "description": "Módulo 1 para el registro y asignación de Oficiales Superiores con control táctico de cupos por comisión.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
