@@ -33,7 +33,8 @@
     "com_seg": 20,
     "com_cron": 8,
     "com_ruta": 16,
-    "com_ausp": 8,
+    "com_trak": 4,
+    "com_mkt": 4,
     "com_econ": 2
   },
   "assignedOfficers": {
@@ -59,8 +60,9 @@
     "com_seg": [],
     "com_cron": [],
     "com_ruta": [],
-    "com_ausp": [],
+    "com_trak": [],
+    "com_mkt": [],
     "com_econ": []
   },
-  "lastUpdated": "2026-10-15T10:58:31.998Z"
+  "lastUpdated": "2026-10-15T22:45:00.000Z"
 }

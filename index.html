@@ -1690,7 +1690,10 @@
               style="text-transform: uppercase;"
               required
             />
-            <div class="help-text">Solo en letras mayúsculas (nombres y apellidos completos).</div>
+            <div id="duplicateNameWarning" style="display: none; margin-top: 0.4rem; padding: 0.5rem 0.75rem; border-radius: 6px; font-size: 0.8rem; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.45); color: #fca5a5; line-height: 1.4;">
+              ⚠️ <strong>Nombre ya registrado:</strong> Este oficial ya se encuentra registrado en el sistema. No se permite volver a registrar el mismo nombre de usuario.
+            </div>
+            <div class="help-text">Solo en letras mayúsculas (nombres y apellidos). Cada usuario debe registrarse con un nombre único en el sistema.</div>
           </div>
 
           <!-- Campo Comisión con Control de Cupos -->
@@ -1776,7 +1779,7 @@
           </div>
         </div>
 
-        <!-- Cuadrícula con las 13 tarjetas de comisiones (ventanas editables) -->
+        <!-- Cuadrícula con las 14 tarjetas de comisiones (ventanas editables) -->
         <div class="deployment-grid" id="deploymentGrid">
           <!-- Inyectadas dinámicamente con controles de administrador -->
         </div>
@@ -1981,10 +1984,10 @@
             </div>
           </div>
 
-          <!-- Tabla Detallada de las 13 Comisiones / Ventanas -->
+          <!-- Tabla Detallada de las 14 Comisiones / Ventanas -->
           <div class="report-table-title">
             <span>Matriz Detallada de Comisiones y Ventanas Tácticas</span>
-            <span style="font-size: 0.725rem; font-weight: 600; color: #64748b;">13 Comisiones Operativas</span>
+            <span style="font-size: 0.725rem; font-weight: 600; color: #64748b;">14 Comisiones Operativas</span>
           </div>
 
           <table class="report-data-table">
@@ -2000,7 +2003,7 @@
               </tr>
             </thead>
             <tbody id="rptTableBody">
-              <!-- Inyectado dinámicamente con los datos de las 13 comisiones -->
+              <!-- Inyectado dinámicamente con los datos de las 14 comisiones -->
             </tbody>
           </table>
 
@@ -2008,7 +2011,7 @@
           <div class="report-legal-note">
             <strong>CERTIFICACIÓN DE REGISTRO ÚNICO Y CONTROL DE CUPOS:</strong>
             El presente informe certifica la asignación oficial del Oficial Administrador con control total sobre el sistema,
-            y el estado en tiempo real de los cupos y personal distribuido en las 13 comisiones tácticas.
+            y el estado en tiempo real de los cupos y personal distribuido en las 14 comisiones tácticas.
             La información contenida en este documento es oficial, vinculante y respaldada por la bitácora del sistema.
           </div>
 
@@ -2255,7 +2258,7 @@
 
   <script>
     /**
-     * CONFIGURACIÓN OFICIAL DE LAS 13 COMISIONES Y CUPOS MÁXIMOS
+     * CONFIGURACIÓN OFICIAL DE LAS 14 COMISIONES Y CUPOS MÁXIMOS
      */
     const COMMISSIONS_DATA = [
       { id: "com_org", name: "Organización y coordinación", maxQuota: 5 },
@@ -2269,7 +2272,8 @@
       { id: "com_seg", name: "Comisión seguridad y tránsito vehicular", maxQuota: 20 },
       { id: "com_cron", name: "Comisión registro y cronómetro", maxQuota: 8 },
       { id: "com_ruta", name: "Comisión controles durante la ruta", maxQuota: 16 },
-      { id: "com_ausp", name: "Comisión auspiciadores", maxQuota: 8 },
+      { id: "com_trak", name: "Comisión trakeo de ruta", maxQuota: 4 },
+      { id: "com_mkt", name: "Comisión marketing", maxQuota: 4 },
       { id: "com_econ", name: "Comisión económica", maxQuota: 2 }
     ];
 
@@ -2317,6 +2321,7 @@
     const formHeaderBadge = document.getElementById("formHeaderBadge");
     const rankSelect = document.getElementById("rankSelect");
     const fullNameInput = document.getElementById("fullNameInput");
+    const duplicateNameWarning = document.getElementById("duplicateNameWarning");
     const commissionSelect = document.getElementById("commissionSelect");
     const alertFeedback = document.getElementById("alertFeedback");
     const quotaMonitorList = document.getElementById("quotaMonitorList");
@@ -2397,6 +2402,99 @@
     let editingOfficer = null;
     let alertTimeout = null;
 
+    /**
+     * Normaliza un nombre para comparación (sin acentos, mayúsculas, espacios colapsados)
+     */
+    function normalizeOfficerName(name) {
+      return (name || '')
+        .toString()
+        .trim()
+        .toUpperCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, ' ');
+    }
+
+    /**
+     * Comprueba si un oficial ya se encuentra registrado con el mismo nombre en el sistema
+     */
+    function findExistingOfficerByName(name, excludeId = null) {
+      const norm = normalizeOfficerName(name);
+      if (!norm) return null;
+
+      // 1. Revisar lista completa de oficiales registrados
+      if (Array.isArray(state.registeredOfficers)) {
+        const found = state.registeredOfficers.find(o => 
+          o && o.fullName && (!excludeId || o.id !== excludeId) && normalizeOfficerName(o.fullName) === norm
+        );
+        if (found) return found;
+      }
+
+      // 2. Revisar oficial administrador activo
+      if (state.adminOfficer && state.adminOfficer.fullName && (!excludeId || state.adminOfficer.id !== excludeId)) {
+        if (normalizeOfficerName(state.adminOfficer.fullName) === norm) {
+          return state.adminOfficer;
+        }
+      }
+
+      // 3. Revisar agrupaciones por comisión asignada
+      if (state.assignedOfficers) {
+        for (const comId of Object.keys(state.assignedOfficers)) {
+          const list = state.assignedOfficers[comId];
+          if (Array.isArray(list)) {
+            const found = list.find(o => 
+              o && o.fullName && (!excludeId || o.id !== excludeId) && normalizeOfficerName(o.fullName) === norm
+            );
+            if (found) return found;
+          }
+        }
+      }
+
+      return null;
+    }
+
+    /**
+     * Valida en tiempo real mientras el usuario escribe si el nombre ya fue registrado
+     */
+    function validateNameUniqueness() {
+      if (!fullNameInput || !duplicateNameWarning) return true;
+      const val = fullNameInput.value.trim();
+      if (!val) {
+        duplicateNameWarning.style.display = "none";
+        fullNameInput.style.borderColor = "";
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.style.opacity = "1";
+          submitBtn.title = "";
+        }
+        return true;
+      }
+
+      const excludeId = (state.isEditing && editingOfficer) ? editingOfficer.id : null;
+      const match = findExistingOfficerByName(val, excludeId);
+
+      if (match) {
+        duplicateNameWarning.innerHTML = `⚠️ <strong>Nombre ya registrado:</strong> El oficial <strong>"${match.fullName}"</strong> ya está registrado y asignado a <strong>${match.commissionName || 'la Comisión'}</strong>. No se permite volver a registrar el mismo nombre de usuario.`;
+        duplicateNameWarning.style.display = "block";
+        fullNameInput.style.borderColor = "#ef4444";
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.style.opacity = "0.5";
+          submitBtn.title = "No se puede registrar: El nombre ya existe en el sistema";
+        }
+        return false;
+      } else {
+        duplicateNameWarning.style.display = "none";
+        fullNameInput.style.borderColor = "";
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.style.opacity = "1";
+          submitBtn.title = "";
+        }
+        return true;
+      }
+    }
+
     // Sincronización entre pestañas en tiempo real
     const syncChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('military_admin_channel') : null;
 
@@ -2414,6 +2512,25 @@
     let socket = null;
     let reconnectTimer = null;
     let keepaliveInterval = null;
+    let wsFailCount = 0;
+    let restPollingInterval = null;
+
+    function startRestPollingFallback() {
+      if (restPollingInterval) return;
+      console.log("[Sincronización 24/7] Modo REST Polling activo para alta disponibilidad (Vercel / Cloud).");
+      restPollingInterval = setInterval(() => {
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+          trigger24HourResync(false);
+        }
+      }, 3500);
+    }
+
+    function stopRestPollingFallback() {
+      if (restPollingInterval) {
+        clearInterval(restPollingInterval);
+        restPollingInterval = null;
+      }
+    }
 
     function initWebSocket() {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -2428,6 +2545,8 @@
 
         socket.onopen = function () {
           console.log(`[Centro de Mando 24/7] Conectado en tiempo real (${clientDeviceType})`);
+          wsFailCount = 0;
+          stopRestPollingFallback();
           if (reconnectTimer) clearTimeout(reconnectTimer);
 
           // Saludo con tipo de dispositivo reportado
@@ -2453,6 +2572,11 @@
               // Servidor respondiendo normalmente 24/7
               return;
             }
+            if (data.event === 'error') {
+              showAlert(`⚠️ ${data.message || 'Error en la operación del servidor.'}`, "error");
+              trigger24HourResync(false);
+              return;
+            }
             if (data.event === 'theme:updated' && data.payload) {
               if (typeof applyTheme === 'function') {
                 themeConfig = Object.assign(themeConfig, data.payload);
@@ -2468,8 +2592,13 @@
 
         socket.onclose = function () {
           if (keepaliveInterval) clearInterval(keepaliveInterval);
-          // Reconexión automática instantánea ante suspensión o cambio de red móvil
-          reconnectTimer = setTimeout(initWebSocket, 2000);
+          wsFailCount++;
+          if (wsFailCount >= 3) {
+            startRestPollingFallback();
+            reconnectTimer = setTimeout(initWebSocket, 20000);
+          } else {
+            reconnectTimer = setTimeout(initWebSocket, 3000);
+          }
         };
 
         socket.onerror = function () {
@@ -2477,13 +2606,15 @@
         };
       } catch (e) {
         console.warn("WebSocket en contingencia: operando con sincronización REST 24/7.");
-        reconnectTimer = setTimeout(initWebSocket, 3500);
+        wsFailCount++;
+        startRestPollingFallback();
+        reconnectTimer = setTimeout(initWebSocket, 15000);
       }
     }
 
     // Sincronización continua 24/7 al reactivar pantalla móvil, reconectar Wi-Fi o enfocar la pestaña
-    function trigger24HourResync() {
-      if (!socket || socket.readyState !== WebSocket.OPEN) {
+    function trigger24HourResync(tryWs = true) {
+      if (tryWs && wsFailCount < 3 && (!socket || socket.readyState !== WebSocket.OPEN)) {
         initWebSocket();
       }
       fetch('/api/state')
@@ -2649,7 +2780,17 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload || {})
-        }).catch(err => console.warn('REST fallback sync error:', err));
+        })
+        .then(async res => {
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            if (errData && errData.message) {
+              showAlert(`⚠️ ${errData.message}`, "error");
+            }
+            trigger24HourResync(false);
+          }
+        })
+        .catch(err => console.warn('REST fallback sync error:', err));
       }
     }
 
@@ -2732,12 +2873,43 @@
           }
         }
 
+        // Asegurar que las comisiones oficiales actuales tengan cupos válidos y depurar comisiones obsoletas
+        COMMISSIONS_DATA.forEach(c => {
+          if (state.quotas[c.id] === undefined) {
+            state.quotas[c.id] = c.maxQuota;
+          }
+        });
+        delete state.quotas["com_ausp"];
+        delete state.assignedOfficers["com_ausp"];
+        if (state.quotas["com_ruta"] === undefined || state.quotas["com_ruta"] === 4) {
+          state.quotas["com_ruta"] = 16;
+        }
+        if (state.quotas["com_trak"] === undefined) {
+          state.quotas["com_trak"] = 4;
+        }
+        if (state.quotas["com_mkt"] === undefined) {
+          state.quotas["com_mkt"] = 4;
+        }
+
         // 2. Verificar y recuperar lista del personal registrado
         const savedPersonnelRaw = localStorage.getItem(STORAGE_KEY_PERSONNEL) || localStorage.getItem("personal_registrado");
         if (savedPersonnelRaw) {
           const parsedPersonnel = JSON.parse(savedPersonnelRaw);
           if (Array.isArray(parsedPersonnel)) {
-            state.registeredOfficers = parsedPersonnel;
+            const uniquePersonnel = [];
+            const seenNames = new Set();
+            const seenIds = new Set();
+            parsedPersonnel.forEach(officer => {
+              if (officer && officer.fullName && officer.id) {
+                const norm = normalizeOfficerName(officer.fullName);
+                if (!seenIds.has(officer.id) && !seenNames.has(norm)) {
+                  seenIds.add(officer.id);
+                  seenNames.add(norm);
+                  uniquePersonnel.push(officer);
+                }
+              }
+            });
+            state.registeredOfficers = uniquePersonnel;
             hasSavedData = true;
 
             // Limpiar listas de asignación antes de reconstruir
@@ -2746,14 +2918,14 @@
             });
 
             // Agrupar personal en sus comisiones correspondientes
-            parsedPersonnel.forEach(officer => {
+            uniquePersonnel.forEach(officer => {
               if (officer && officer.commissionId && state.assignedOfficers[officer.commissionId]) {
                 state.assignedOfficers[officer.commissionId].push(officer);
               }
             });
 
-            if (!state.adminOfficer && parsedPersonnel.length > 0) {
-              const adminCandidate = parsedPersonnel.find(o => o.role === "ADMINISTRADOR") || parsedPersonnel[0];
+            if (!state.adminOfficer && uniquePersonnel.length > 0) {
+              const adminCandidate = uniquePersonnel.find(o => o.role === "ADMINISTRADOR") || uniquePersonnel[0];
               state.adminOfficer = adminCandidate;
             }
           }
@@ -3297,6 +3469,10 @@
       rankSelect.disabled = false;
       fullNameInput.value = "";
       fullNameInput.disabled = false;
+      fullNameInput.style.borderColor = "";
+      if (duplicateNameWarning) {
+        duplicateNameWarning.style.display = "none";
+      }
       commissionSelect.value = "";
       commissionSelect.disabled = false;
 
@@ -3406,6 +3582,20 @@
 
       if (!fullName) {
         showAlert("Debe ingresar el Nombre Completo del Oficial.");
+        fullNameInput.focus();
+        return;
+      }
+
+      // Validación estricta: Una vez que se registre el nombre, no se puede volver a registrar el mismo nombre
+      const editingId = (state.isEditing && editingOfficer) ? editingOfficer.id : null;
+      const duplicateOfficer = findExistingOfficerByName(fullName, editingId);
+      if (duplicateOfficer) {
+        showAlert(`⚠️ BLOQUEO DE DUPLICADOS: El oficial "${fullName}" ya se encuentra registrado en el sistema (${duplicateOfficer.commissionName || 'Comisión asignada'}). No se permite volver a registrar el mismo nombre de usuario.`, "error");
+        if (duplicateNameWarning) {
+          duplicateNameWarning.innerHTML = `⚠️ <strong>Nombre ya registrado:</strong> El oficial <strong>"${duplicateOfficer.fullName}"</strong> ya está registrado y asignado a <strong>${duplicateOfficer.commissionName || 'la Comisión'}</strong>. No se permite volver a registrar el mismo nombre de usuario.`;
+          duplicateNameWarning.style.display = "block";
+        }
+        fullNameInput.style.borderColor = "#ef4444";
         fullNameInput.focus();
         return;
       }
@@ -3543,6 +3733,10 @@
       // Limpiar campos del formulario para permitir que se registren más oficiales de inmediato
       rankSelect.value = "";
       fullNameInput.value = "";
+      fullNameInput.style.borderColor = "";
+      if (duplicateNameWarning) {
+        duplicateNameWarning.style.display = "none";
+      }
       commissionSelect.value = "";
 
       // Habilitar botón para navegar al Panel de Despliegue
@@ -3560,6 +3754,10 @@
       alertFeedback.style.display = "none";
       showAlert(`Oficial ${newOfficer.rank} ${newOfficer.fullName} registrado y sincronizado en tiempo real en todos los dispositivos (${clientDeviceType}).`, "success");
     });
+
+    // Validación dinámica en tiempo real de unicidad de nombre de usuario
+    fullNameInput.addEventListener("input", validateNameUniqueness);
+    fullNameInput.addEventListener("blur", validateNameUniqueness);
 
     // Eventos de botones
     btnBackToRegister.addEventListener("click", showModuleRegistration);

@@ -22,7 +22,7 @@ const wss = new WebSocketServer({ server, path: '/ws' });
 
 app.use(express.json());
 
-// Definición de las 13 comisiones oficiales
+// Definición de las 14 comisiones oficiales
 const COMMISSIONS_DATA = [
   { id: "com_org", name: "Organización y coordinación", maxQuota: 5 },
   { id: "com_insc", name: "Comisión inscripciones", maxQuota: 5 },
@@ -35,7 +35,8 @@ const COMMISSIONS_DATA = [
   { id: "com_seg", name: "Comisión seguridad y tránsito vehicular", maxQuota: 20 },
   { id: "com_cron", name: "Comisión registro y cronómetro", maxQuota: 8 },
   { id: "com_ruta", name: "Comisión controles durante la ruta", maxQuota: 16 },
-  { id: "com_ausp", name: "Comisión auspiciadores", maxQuota: 8 },
+  { id: "com_trak", name: "Comisión trakeo de ruta", maxQuota: 4 },
+  { id: "com_mkt", name: "Comisión marketing", maxQuota: 4 },
   { id: "com_econ", name: "Comisión económica", maxQuota: 2 }
 ];
 
@@ -64,9 +65,22 @@ COMMISSIONS_DATA.forEach(c => {
   state.assignedOfficers[c.id] = [];
 });
 
+// Función para normalizar nombres eliminando acentos, espacios excesivos y mayúsculas
+export function normalizeName(name: string): string {
+  return (name || '')
+    .toString()
+    .trim()
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ');
+}
+
 // Persistencia en disco para garantizar retención ante reinicios de servidor
-const DATA_DIR = path.join(__dirname, 'data');
+const IS_VERCEL = !!process.env.VERCEL;
+const DATA_DIR = IS_VERCEL ? path.join('/tmp', 'data') : path.join(__dirname, 'data');
 const STATE_FILE = path.join(DATA_DIR, 'militar_state.json');
+const SEED_FILE = path.join(__dirname, 'data', 'militar_state.json');
 
 function saveServerState() {
   try {
@@ -88,8 +102,13 @@ function saveServerState() {
 
 function loadServerState() {
   try {
+    let raw = '';
     if (fs.existsSync(STATE_FILE)) {
-      const raw = fs.readFileSync(STATE_FILE, 'utf-8');
+      raw = fs.readFileSync(STATE_FILE, 'utf-8');
+    } else if (fs.existsSync(SEED_FILE)) {
+      raw = fs.readFileSync(SEED_FILE, 'utf-8');
+    }
+    if (raw) {
       const saved = JSON.parse(raw);
       if (saved && typeof saved === 'object') {
         if (saved.quotas) {
@@ -97,13 +116,35 @@ function loadServerState() {
             state.quotas[id] = saved.quotas[id];
           });
         }
+        // Asegurar que las comisiones oficiales actuales tengan cupos válidos y depurar comisiones obsoletas
+        COMMISSIONS_DATA.forEach(c => {
+          if (state.quotas[c.id] === undefined) {
+            state.quotas[c.id] = c.maxQuota;
+          }
+        });
+        delete state.quotas['com_ausp'];
+        delete state.assignedOfficers['com_ausp'];
+        if (state.quotas['com_ruta'] === undefined || state.quotas['com_ruta'] === 4) {
+          state.quotas['com_ruta'] = 16;
+        }
+        if (state.quotas['com_trak'] === undefined) {
+          state.quotas['com_trak'] = 4;
+        }
+        if (state.quotas['com_mkt'] === undefined) {
+          state.quotas['com_mkt'] = 4;
+        }
         if (Array.isArray(saved.registeredOfficers)) {
           const uniqueOfficers: Officer[] = [];
-          const seen = new Set<string>();
+          const seenIds = new Set<string>();
+          const seenNames = new Set<string>();
           saved.registeredOfficers.forEach((ofc: Officer) => {
-            if (ofc && ofc.id && !seen.has(ofc.id)) {
-              seen.add(ofc.id);
-              uniqueOfficers.push(ofc);
+            if (ofc && ofc.id && ofc.fullName) {
+              const norm = normalizeName(ofc.fullName);
+              if (!seenIds.has(ofc.id) && !seenNames.has(norm)) {
+                seenIds.add(ofc.id);
+                seenNames.add(norm);
+                uniqueOfficers.push(ofc);
+              }
             }
           });
           state.registeredOfficers = uniqueOfficers;
@@ -142,6 +183,7 @@ loadServerState();
 
 // Persistencia en disco del Escudo, Fondos y Configuración Visual
 const THEME_FILE = path.join(DATA_DIR, 'militar_theme.json');
+const SEED_THEME_FILE = path.join(__dirname, 'data', 'militar_theme.json');
 let serverTheme: any = null;
 
 function saveServerTheme(themeData: any) {
@@ -157,8 +199,13 @@ function saveServerTheme(themeData: any) {
 
 function loadServerTheme() {
   try {
+    let raw = '';
     if (fs.existsSync(THEME_FILE)) {
-      const raw = fs.readFileSync(THEME_FILE, 'utf-8');
+      raw = fs.readFileSync(THEME_FILE, 'utf-8');
+    } else if (fs.existsSync(SEED_THEME_FILE)) {
+      raw = fs.readFileSync(SEED_THEME_FILE, 'utf-8');
+    }
+    if (raw) {
       serverTheme = JSON.parse(raw);
       console.log('Tema y personalización visual recuperados del servidor con éxito.');
     }
@@ -235,6 +282,22 @@ function registerOfficerHandler(payload: {
 
   if (!rank || !fullName || !commissionId) {
     return { success: false, message: 'Faltan campos obligatorios para el registro.' };
+  }
+
+  const normCandidateName = normalizeName(fullName);
+  if (!normCandidateName) {
+    return { success: false, message: 'El nombre del oficial no es válido.' };
+  }
+
+  // Validación estricta: Una vez que se registra el nombre, no se puede volver a registrar el mismo nombre
+  const duplicateOfficer = state.registeredOfficers.find(o => 
+    o && (!id || o.id !== id) && normalizeName(o.fullName) === normCandidateName
+  );
+  if (duplicateOfficer) {
+    return { 
+      success: false, 
+      message: `El oficial con el nombre "${fullName.trim().toUpperCase()}" ya se encuentra registrado en el sistema (${duplicateOfficer.commissionName || 'Comisión asignada'}). No se permite registrar el mismo nombre de usuario.` 
+    };
   }
 
   if (state.quotas[commissionId] === undefined || state.quotas[commissionId] <= 0) {
@@ -327,6 +390,22 @@ function updateOfficerHandler(payload: {
   const officerIdx = state.registeredOfficers.findIndex(o => o.id === targetId);
   if (officerIdx === -1) {
     return { success: false, message: 'No se encontró el oficial a modificar.' };
+  }
+
+  const normCandidateName = normalizeName(fullName);
+  if (!normCandidateName) {
+    return { success: false, message: 'El nombre del oficial no es válido.' };
+  }
+
+  // Validación estricta: No permitir tomar el nombre de otro oficial registrado
+  const duplicateOfficer = state.registeredOfficers.find(o => 
+    o && o.id !== targetId && normalizeName(o.fullName) === normCandidateName
+  );
+  if (duplicateOfficer) {
+    return { 
+      success: false, 
+      message: `El nombre "${fullName.trim().toUpperCase()}" ya pertenece a otro oficial registrado en el sistema (${duplicateOfficer.commissionName || 'Comisión'}). No se permite duplicar nombres de usuario.` 
+    };
   }
 
   const currentOfficer = state.registeredOfficers[officerIdx];
@@ -726,4 +805,10 @@ async function startServer() {
   });
 }
 
-startServer();
+// Iniciar servidor solo si no estamos en entorno Vercel Serverless
+if (!process.env.VERCEL) {
+  startServer();
+}
+
+export default app;
+export { app, server, startServer };
